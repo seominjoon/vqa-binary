@@ -73,7 +73,7 @@ for i = 1, sz, batch_size do
     local r = math.min(sz, i + batch_size - 1)
     local ims = torch.CudaTensor(r-i+1, 3, 224, 224)
     for j = 1, r-i+1 do
-        ims[j] = loaddim(image_path_list[i+j-1]):cuda()
+        ims[j] = loadim(image_path_list[i+j-1]):cuda()
     end
     net:forward(ims)
     feat[{{i,r},{}}] = net.modules[43].output:clone()
