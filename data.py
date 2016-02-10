@@ -43,7 +43,5 @@ class DataSet(object):
         np.random.shuffle(self.idxs)
 
 def read_vqa(image_rep_h5_path, question_json_path, annotation_json_path=None, data_dir='data'):
-    question_dict = json.load(open(question_json_path, 'rb'))
-    annotation_dict = json.load(open(annotation_json_path, 'rb'))
     image_rep_h5 = h5py.File(image_rep_h5_path, 'r')
     image_rep_ds = image_rep_h5['data']
