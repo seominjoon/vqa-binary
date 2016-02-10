@@ -44,9 +44,10 @@ def prepro_questions(args):
         labels.append(label)
 
         if not vocab_dict_path:
-            vocab_set |= tok_question
-            vocab_set |= tok_mcs
-            vocab_set |= tok_answer
+            vocab_set |= set(tok_question)
+            for tok_mc in tok_mcs:
+                vocab_set |= set(tok_mc)
+            vocab_set |= set(tok_answer)
 
     if not vocab_dict_path:
         vocab_dict = {word: idx for idx, word in enumerate(list(sorted(vocab_set)))}
