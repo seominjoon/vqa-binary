@@ -67,9 +67,10 @@ def prepro_questions(args):
         vocab_dict = {word: idx+2 for idx, word in enumerate(list(sorted(vocab_set)))}
         vocab_dict['UNK'] = 1
 
+    print "Converting to numpy array ..."
     sents = [[[vocab_dict[word] for word in each_tok_sent] + [0] * (max_sent_len - len(each_tok_sent))
               for each_tok_sent in tok_sent] for tok_sent in tok_sents]
-    sents = np.array(sents)
+    sents = np.array(sents, dtype='int32')
 
     assert len(sents.shape) == 3
 
@@ -77,10 +78,9 @@ def prepro_questions(args):
     labels_path = os.path.join(target_path, "labels.json")
     vocab_dict_path = os.path.join(target_path, "vocab_dict.json")
 
-    f = h5py.File(sents_path, 'w')
-    f.create_dataset('data', shape=sents.shape)
 
     print "Dumping h5 file ..."
+    f = h5py.File(sents_path, 'w')
     f['data'] = sents
     f.close()
 
