@@ -52,7 +52,7 @@ def prepro_questions(args):
     if not vocab_dict_path:
         vocab_dict = {word: idx for idx, word in enumerate(list(sorted(vocab_set)))}
 
-    sents = [[vocab_dict[word] for word in tok_sent] for tok_sent in tok_sents]
+    sents = [[[vocab_dict[word] for word in each_tok_sent] for each_tok_sent in tok_sent] for tok_sent in tok_sents]
 
     sents_path = os.path.join(target_path, "sents.json")
     labels_path = os.path.join(target_path, "labels.json")
