@@ -2,6 +2,9 @@ import json
 import os
 import argparse
 import re
+import progressbar as pb
+import h5py
+import numpy as np
 
 parser = argparse.ArgumentParser()
 parser.add_argument('question_list_path')
@@ -32,7 +35,11 @@ def prepro_questions(args):
     tok_sents = []
     labels = []
 
+    max_sent_len = 0
+
     print "Preprocessing questions ..."
+    num_questions = len(question_list)
+    pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=num_questions).start()
     for i, (raw_question, raw_mcs, raw_answer) in enumerate(zip(question_list, multiple_choices_list, answer_list)):
         tok_question = _tokenize(raw_question)
         tok_mcs = [_tokenize(raw_mc) for raw_mc in raw_mcs]
@@ -43,23 +50,42 @@ def prepro_questions(args):
         tok_sents.append(tok_sent)
         labels.append(label)
 
+        tok_sent_len = max(len(each_tok_sent) for each_tok_sent in tok_sent)
+        if tok_sent_len > max_sent_len:
+            max_sent_len = tok_sent_len
+
         if not vocab_dict_path:
             vocab_set |= set(tok_question)
             for tok_mc in tok_mcs:
                 vocab_set |= set(tok_mc)
             vocab_set |= set(tok_answer)
 
+        pbar.update(i+1)
+    pbar.finish()
+
     if not vocab_dict_path:
-        vocab_dict = {word: idx for idx, word in enumerate(list(sorted(vocab_set)))}
+        vocab_dict = {word: idx+2 for idx, word in enumerate(list(sorted(vocab_set)))}
+        vocab_dict['UNK'] = 1
 
-    sents = [[[vocab_dict[word] for word in each_tok_sent] for each_tok_sent in tok_sent] for tok_sent in tok_sents]
+    sents = [[[vocab_dict[word] for word in each_tok_sent] + [0] * (max_sent_len - len(each_tok_sent))
+              for each_tok_sent in tok_sent] for tok_sent in tok_sents]
+    sents = np.array(sents)
 
-    sents_path = os.path.join(target_path, "sents.json")
+    assert len(sents.shape) == 3
+
+    sents_path = os.path.join(target_path, "sents.h5")
     labels_path = os.path.join(target_path, "labels.json")
     vocab_dict_path = os.path.join(target_path, "vocab_dict.json")
 
+    f = h5py.File(sents_path, 'w')
+    f.create_dataset('data', shape=sents.shape)
+
+    print "Dumping h5 file ..."
+    f['data'] = sents
+    f.close()
+
     print "Dumping json files ..."
-    json.dump(sents, open(sents_path, 'wb'))
+    # json.dump(sents, open(sents_path, 'wb'))
     json.dump(labels, open(labels_path, 'wb'))
     json.dump(vocab_dict_path, open(vocab_dict_path, 'wb'))
 
