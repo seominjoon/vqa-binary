@@ -31,7 +31,9 @@ def prepro_common(args):
     question_list = []
     multiple_choices_list = []
     answer_list = []
+    image_index_list = []
     image_path_list = []
+    image_path_dict = {}
 
     num_questions = len(question_json['questions'])
 
@@ -51,7 +53,12 @@ def prepro_common(args):
         question_list.append(question)
         multiple_choices_list.append(multiple_choices)
         answer_list.append(answer)
-        image_path_list.append(image_path)
+        if image_path in image_path_dict:
+            image_index_list.append(image_path_dict[image_path])
+        else:
+            image_index_list.append(len(image_path_list))
+            image_path_dict[image_path] = len(image_path_list)
+            image_path_list.append(image_path)
 
         pbar.update(idx + 1)
 
@@ -65,6 +72,7 @@ def prepro_common(args):
     json.dump(multiple_choices_list, open(os.path.join(target_path, "multiple_choices_list.json"), 'w'))
     json.dump(answer_list, open(os.path.join(target_path, "answer_list.json"), 'w'))
     json.dump(image_path_list, open(os.path.join(target_path, "image_path_list.json"), 'w'))
+    json.dump(image_index_list, open(os.path.join(target_path, "image_index_list.json"), 'w'))
 
 if __name__ == "__main__":
     prepro_common(ARGS)
