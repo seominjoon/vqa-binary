@@ -24,7 +24,9 @@ def prepro_common(args):
     ext = args.ext
     target_path = args.target_path
 
+    print "Loading %s ..." % question_json_path
     question_json = json.load(open(question_json_path, 'rb'))
+    print "Loading %s ..." % annotation_json_path
     annotation_json = json.load(open(annotation_json_path, 'rb'))
     question_list = []
     multiple_choices_list = []
@@ -42,7 +44,7 @@ def prepro_common(args):
         assert image_id == annotation_dict['image_id']
         question = question_dict['question']
         multiple_choices = question_dict['multiple_choices']
-        answer = annotation_dict['answer']
+        answer = annotation_dict['multiple_choice_answer']
         image_id_str = str(image_id).zfill(id_len)
         image_path = os.path.join(image_folder_path, "%s%s%s" % (prefix, image_id_str, ext))
 
@@ -53,13 +55,16 @@ def prepro_common(args):
 
         pbar.update(idx + 1)
 
+    pbar.finish()
+
     if not os.path.exists(target_path):
         os.mkdir(target_path)
 
-    json.dump(question_list, open(os.path.join(target_path, "question_list"), 'w'))
-    json.dump(multiple_choices_list, open(os.path.join(target_path, "multiple_choices_list"), 'w'))
-    json.dump(answer_list, open(os.path.join(target_path, "answer_list"), 'w'))
-    json.dump(image_path_list, open(os.path.join(target_path, "image_path_list"), 'w'))
+    print "Dumping json files ..."
+    json.dump(question_list, open(os.path.join(target_path, "question_list.json"), 'w'))
+    json.dump(multiple_choices_list, open(os.path.join(target_path, "multiple_choices_list.json"), 'w'))
+    json.dump(answer_list, open(os.path.join(target_path, "answer_list.json"), 'w'))
+    json.dump(image_path_list, open(os.path.join(target_path, "image_path_list.json"), 'w'))
 
 if __name__ == "__main__":
     prepro_common(ARGS)
