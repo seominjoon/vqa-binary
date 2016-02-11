@@ -5,7 +5,7 @@ import json
 
 
 class DataSet(object):
-    def __init__(self, config, idxs, image_rep_ds, sents, labels=None):
+    def __init__(self, batch_size, idxs, image_rep_ds, image_idxs, sent_ds, labels=None):
         """
 
         :param config:
@@ -15,11 +15,11 @@ class DataSet(object):
         :param labels: may be unspecified if the dataset is for test-std
         :return:
         """
-        self.config = config
-        self.image_rep_ds = image_rep_ds
         self.idxs = idxs
-        self.batch_size = config.batch_size
-        self.sents = sents
+        self.image_rep_ds = image_rep_ds
+        self.image_idxs = image_idxs
+        self.batch_size = batch_size
+        self.sent_ds = sent_ds
         self.labels = labels
         self.idx_in_epoch = 0
         self.num_epochs_completed = 0
@@ -29,8 +29,9 @@ class DataSet(object):
         assert self.has_next_batch(), "End of epoch. Call 'complete_epoch()' to rewind."
         from_, to = self.idx_in_epoch, self.idx_in_epoch + self.batch_size
         cur_idxs = self.idxs[from_:to]
-        image_rep_batch = self.image_rep_ds[cur_idxs]
-        sent_batch = self.sents[cur_idxs]
+        cur_image_idxs = self.image_idxs[cur_idxs]
+        image_rep_batch = self.image_rep_ds[cur_image_idxs]
+        sent_batch = self.sent_ds[cur_idxs]
         label_batch = self.labels[cur_idxs]
         return image_rep_batch, sent_batch, label_batch
 
@@ -42,6 +43,17 @@ class DataSet(object):
         self.num_epochs_completed += 1
         np.random.shuffle(self.idxs)
 
-def read_vqa(image_rep_h5_path, question_json_path, annotation_json_path=None, data_dir='data'):
+def read_vqa(batch_size, image_rep_h5_path, image_idx_path, sent_h5_path, labels_path=None):
     image_rep_h5 = h5py.File(image_rep_h5_path, 'r')
     image_rep_ds = image_rep_h5['data']
+    sent_h5 = h5py.File(sent_h5_path, 'r')
+    sent_ds = sent_h5['data']
+    image_idxs = np.array(json.load(open(image_idx_path, 'rb')))
+    if labels_path:
+        labels = np.array(json.load(open(labels_path, 'rb')))
+    else:
+        labels = None
+    idxs = range(len(labels))
+    data_set = DataSet(batch_size, idxs, image_rep_ds, image_idxs, sent_ds, labels=labels)
+    return data_set
+

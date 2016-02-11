@@ -46,7 +46,7 @@ def prepro_questions(args):
         tok_answer = _tokenize(raw_answer)
 
         tok_sent = [_append_answer(tok_question, tok_mc) for tok_mc in tok_mcs]
-        label = [tok_answer == tok_mc for tok_mc in tok_mcs]
+        label = [int(tok_answer == tok_mc) for tok_mc in tok_mcs]
         tok_sents.append(tok_sent)
         labels.append(label)
 
@@ -74,20 +74,19 @@ def prepro_questions(args):
 
     assert len(sents.shape) == 3
 
-    sents_path = os.path.join(target_path, "sents.h5")
-    labels_path = os.path.join(target_path, "labels.json")
+    sent_path = os.path.join(target_path, "sent.h5")
+    label_path = os.path.join(target_path, "label.json")
     vocab_dict_path = os.path.join(target_path, "vocab_dict.json")
 
 
     print "Dumping h5 file ..."
-    f = h5py.File(sents_path, 'w')
+    f = h5py.File(sent_path, 'w')
     f['data'] = sents
     f.close()
 
     print "Dumping json files ..."
-    # json.dump(sents, open(sents_path, 'wb'))
-    json.dump(labels, open(labels_path, 'wb'))
-    json.dump(vocab_dict_path, open(vocab_dict_path, 'wb'))
+    json.dump(labels, open(label_path, 'wb'))
+    json.dump(vocab_dict, open(vocab_dict_path, 'wb'))
 
 
 def _tokenize(raw):
