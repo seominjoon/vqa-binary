@@ -1,4 +1,5 @@
 import tensorflow as tf
+import progressbar as pb
 
 from data import read_vqa
 
@@ -14,8 +15,16 @@ FLAGS = flags.FLAGS
 
 def main(_):
     data_set = read_vqa(FLAGS.train_batch_size, FLAGS.train_image_rep_h5, FLAGS.train_image_idx, FLAGS.train_sent_h5, FLAGS.train_label)
-    image_rep_batch, sent_batch, label_batch  = data_set.get_next_labeled_batch()
-    print image_rep_batch.shape
+
+    pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=data_set.num_batches).start()
+    i = 1
+    while data_set.has_next_batch():
+        image_rep_batch, sent_batch, label_batch = data_set.get_next_labeled_batch()
+        pbar.update(i)
+        i += 1
+    pbar.finish()
+    print sent_batch.shape
+
 
 if __name__ == "__main__":
     tf.app.run()

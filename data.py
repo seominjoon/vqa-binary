@@ -24,6 +24,7 @@ class DataSet(object):
         self.idx_in_epoch = 0
         self.num_epochs_completed = 0
         self.num_examples = len(idxs)
+        self.num_batches = self.num_examples / self.batch_size
 
     def get_next_labeled_batch(self):
         assert self.has_next_batch(), "End of epoch. Call 'complete_epoch()' to rewind."
