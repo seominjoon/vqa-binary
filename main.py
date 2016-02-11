@@ -17,6 +17,8 @@ flags.DEFINE_string("vocab_dict", "train/vocab_dict.json", "vocab_dict.json file
 flags.DEFINE_integer("num_epochs", 100, "Total number of epochs [100]")
 flags.DEFINE_float("learning_rate", 0.01, "Learning rate [0.01]")
 flags.DEFINE_float("max_grad_norm", 40, "Max gradient norm during trainig [40]")
+flags.DEFINE_integer("num_layers", 1, "Number of LSTM layers [1]")
+flags.DEFINE_integer("hidden_size", 200, "Hidden size of LSTM [200]")
 
 FLAGS = flags.FLAGS
 
@@ -25,7 +27,7 @@ def main(_):
     FLAGS.vocab_size = len(vocab_dict)
 
     train_data_set = read_vqa(FLAGS.train_batch_size, FLAGS.train_image_rep_h5, FLAGS.train_image_idx, FLAGS.train_sent_h5, FLAGS.train_label)
-    FLAGS.image_rep_dim = train_data_set.image_rep_dim
+    FLAGS.image_rep_size = train_data_set.image_rep_size
     FLAGS.max_sent_size = train_data_set.max_sent_size
     FLAGS.num_mcs = train_data_set.num_mcs
 

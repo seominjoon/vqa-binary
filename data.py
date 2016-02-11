@@ -17,7 +17,7 @@ class DataSet(object):
         """
         self.idxs = idxs
         self.image_rep_ds = image_rep_ds
-        self.image_rep_dim = image_rep_ds.shape[1]
+        self.image_rep_size = image_rep_ds.shape[1]
         self.image_idxs = image_idxs
         self.batch_size = batch_size
         self.sent_ds = sent_ds

@@ -11,12 +11,13 @@ class Model(object):
         self.tf_graph = tf_graph
         self.params = params
         self.mode = mode
-        self._build_tf_graph()
+        with tf_graph.as_default():
+            self._build_tf_graph()
 
     def _build_tf_graph(self):
         params = self.params
         num_layers = params.num_layers
-        batch_size = params.batch_size
+        batch_size = params.train_batch_size
         hidden_size = params.hidden_size
         max_sent_size = params.max_sent_size
         image_rep_size = params.image_rep_size
@@ -50,10 +51,12 @@ class Model(object):
 
         # concatenate sent emb and image rep
         with tf.variable_scope('out'):
-            logit_batch = h_last_batch * m_batch
+            # logit_batch = h_last_batch * m_batch
+            class_mat = tf.get_variable("class_mat", [hidden_size, 2])
+            logit_batch = tf.matmul(o_split_batch[-1] * m_batch, class_mat)
 
         with tf.variable_scope('loss'):
-            losses = tf.nn.softmax_cross_entropy_with_logits(logit_batch, target_batch)
+            losses = tf.nn.softmax_cross_entropy_with_logits(logit_batch, tf.cast(target_batch, 'float'))
             avg_loss = tf.reduce_mean(losses)
 
         self.input_sent_batch = input_sent_batch
@@ -63,7 +66,7 @@ class Model(object):
         self.avg_loss = avg_loss
 
         if self.mode == 'train':
-            global_step = tf.get_variable("global_step", trainable=False)
+            global_step = tf.Variable(0, name="global_step", trainable=False)
             opt = tf.train.GradientDescentOptimizer(learning_rate)
             grads_and_vars = opt.compute_gradients(losses)
             clipped_grads_and_vars = [(tf.clip_by_norm(grad, params.max_grad_norm), var) for grad, var in grads_and_vars]
@@ -90,7 +93,7 @@ class Model(object):
         pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=train_data_set.num_batches).start()
         for num_batches_completed in xrange(train_data_set.num_batches):
             image_rep_batch, mc_sent_batch, mc_label_batch = train_data_set.get_next_labeled_batch()
-            sent_batch, label_batch = np.zeros([batch_size, max_sent_size]), np.zeros([batch_size, max_sent_size])
+            sent_batch, target_batch = np.zeros([batch_size, max_sent_size]), np.zeros([batch_size, 2])
             for i, (mc_sent, mc_label) in enumerate(zip(mc_sent_batch, mc_label_batch)):
                 correct_idx = np.argmax(mc_label)
                 if np.random.randint(2) > 0:
@@ -99,9 +102,10 @@ class Model(object):
                     delta_idx = np.random.randint(params.num_mcs-1) + 1
                     new_idx = correct_idx - delta_idx
                     sent, label = mc_sent[new_idx], mc_label[new_idx]
+                target = np.array([0,1]) if label else np.array([1,0])
                 sent_batch[i, :] = sent
-                label_batch[i, :] = label
-            result = self.train_batch(sess, image_rep_batch, sent_batch, label_batch, learning_rate)
+                target_batch[i, :] = target
+            result = self.train_batch(sess, image_rep_batch, sent_batch, target_batch, learning_rate)
             pbar.update(num_batches_completed)
         pbar.finish()
 
