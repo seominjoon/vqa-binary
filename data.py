@@ -34,6 +34,7 @@ class DataSet(object):
         image_rep_batch = np.array([self.image_rep_ds[cur_image_idx] for cur_image_idx in cur_image_idxs])
         sent_batch = self.sent_ds[cur_idxs]
         label_batch = self.labels[cur_idxs]
+        self.idx_in_epoch += self.batch_size
         return image_rep_batch, sent_batch, label_batch
 
     def has_next_batch(self):
