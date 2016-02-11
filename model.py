@@ -63,7 +63,7 @@ class Model(object):
         self.avg_loss = avg_loss
 
         if self.mode == 'train':
-            global_step = tf.get_variable("global_step", trainable=False, name='global_step')
+            global_step = tf.get_variable("global_step", trainable=False)
             opt = tf.train.GradientDescentOptimizer(learning_rate)
             grads_and_vars = opt.compute_gradients(losses)
             clipped_grads_and_vars = [(tf.clip_by_norm(grad, params.max_grad_norm), var) for grad, var in grads_and_vars]
@@ -80,7 +80,7 @@ class Model(object):
         sess.run(self.opt_op, feed_dict=feed_dict)
         return None
 
-    def train(self, sess, train_data_set, learning_rate, eval_period=1):
+    def train(self, sess, train_data_set, learning_rate):
         assert self.mode == 'train', 'This model is not for training!'
         assert isinstance(train_data_set, DataSet)
         params = self.params
