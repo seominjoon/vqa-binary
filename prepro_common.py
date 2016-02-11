@@ -68,11 +68,11 @@ def prepro_common(args):
         os.mkdir(target_path)
 
     print "Dumping json files ..."
-    json.dump(question_list, open(os.path.join(target_path, "question_list.json"), 'w'))
-    json.dump(multiple_choices_list, open(os.path.join(target_path, "multiple_choices_list.json"), 'w'))
-    json.dump(answer_list, open(os.path.join(target_path, "answer_list.json"), 'w'))
-    json.dump(image_path_list, open(os.path.join(target_path, "image_path_list.json"), 'w'))
-    json.dump(image_index_list, open(os.path.join(target_path, "image_index_list.json"), 'w'))
+    json.dump(question_list, open(os.path.join(target_path, "question.json"), 'w'))
+    json.dump(multiple_choices_list, open(os.path.join(target_path, "multiple_choice.json"), 'w'))
+    json.dump(answer_list, open(os.path.join(target_path, "answer.json"), 'w'))
+    json.dump(image_path_list, open(os.path.join(target_path, "image_path.json"), 'w'))
+    json.dump(image_index_list, open(os.path.join(target_path, "image_idx.json"), 'w'))
 
 if __name__ == "__main__":
     prepro_common(ARGS)
