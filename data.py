@@ -30,7 +30,7 @@ class DataSet(object):
         from_, to = self.idx_in_epoch, self.idx_in_epoch + self.batch_size
         cur_idxs = self.idxs[from_:to]
         cur_image_idxs = self.image_idxs[cur_idxs]
-        image_rep_batch = self.image_rep_ds[cur_image_idxs]
+        image_rep_batch = np.array([self.image_rep_ds[cur_image_idx] for cur_image_idx in cur_image_idxs])
         sent_batch = self.sent_ds[cur_idxs]
         label_batch = self.labels[cur_idxs]
         return image_rep_batch, sent_batch, label_batch

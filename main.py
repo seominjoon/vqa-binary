@@ -14,8 +14,8 @@ FLAGS = flags.FLAGS
 
 def main(_):
     data_set = read_vqa(FLAGS.train_batch_size, FLAGS.train_image_rep_h5, FLAGS.train_image_idx, FLAGS.train_sent_h5, FLAGS.train_label)
-    batch = data_set.get_next_labeled_batch()
-    print batch
+    image_rep_batch, sent_batch, label_batch  = data_set.get_next_labeled_batch()
+    print image_rep_batch.shape
 
 if __name__ == "__main__":
     tf.app.run()

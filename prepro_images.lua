@@ -80,11 +80,6 @@ for i = 1, sz, batch_size do
     collectgarbage()
 end
 
-local train_h5_file = hdf5.open(opt.out_path, 'w')
-train_h5_file:write('/images_train', feat_train:float())
-train_h5_file:write('/images_test', feat_test:float())
-train_h5_file:close()
-
 local h5_file = hdf5.open(opt.out_path, 'w')
 h5_file:write('/data', feat:float())
 h5_file:close()
