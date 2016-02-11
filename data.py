@@ -17,9 +17,12 @@ class DataSet(object):
         """
         self.idxs = idxs
         self.image_rep_ds = image_rep_ds
+        self.image_rep_dim = image_rep_ds.shape[1]
         self.image_idxs = image_idxs
         self.batch_size = batch_size
         self.sent_ds = sent_ds
+        self.num_mcs = sent_ds.shape[1]
+        self.max_sent_size = sent_ds.shape[2]
         self.labels = labels
         self.idx_in_epoch = 0
         self.num_epochs_completed = 0
