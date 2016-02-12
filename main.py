@@ -41,13 +41,14 @@ def main(_):
     tf_graph = tf.Graph()
     train_model = Model(tf_graph, FLAGS, 'train')
     tf.get_variable_scope().reuse_variables()
-    test_model = Model(tf_graph, FLAGS, 'test')
+    # test_model = Model(tf_graph, FLAGS, 'test')
     with tf.Session(graph=tf_graph) as sess:
         sess.run(tf.initialize_all_variables())
         for epoch_idx in xrange(FLAGS.num_epochs):
             print "epoch %d" % (epoch_idx + 1)
             train_model.train(sess, train_data_set, FLAGS.learning_rate)
-            test_model.test(sess, val_data_set)
+            train_model.test(sess, train_data_set)
+            # test_model.test(sess, val_data_set)
 
 
 if __name__ == "__main__":

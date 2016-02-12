@@ -126,7 +126,6 @@ class Model(object):
         train_data_set.complete_epoch()
 
     def test(self, sess, test_data_set):
-        assert self.mode == 'test', 'This model is not for testing!'
         assert isinstance(test_data_set, DataSet)
 
         pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=test_data_set.num_batches).start()
