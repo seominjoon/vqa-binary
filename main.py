@@ -50,7 +50,6 @@ def main(_):
     test_model = Model(tf_graph, FLAGS, 'test')
     with tf.Session(graph=tf_graph) as sess:
         sess.run(tf.initialize_all_variables())
-        saver = tf.train.Saver()
         if FLAGS.restore:
             saver.restore(sess, "checkpoint")
             print "Model restored."
@@ -58,7 +57,7 @@ def main(_):
             print "Training %d epochs ..." % FLAGS.num_epochs
             for epoch_idx in xrange(FLAGS.num_epochs):
                 print "epoch %d:" % (epoch_idx + 1)
-                train_model.train(sess, train_data_set, FLAGS.learning_rate, saver=saver)
+                train_model.train(sess, train_data_set, FLAGS.learning_rate, save=True)
                 test_model.test(sess, val_data_set)
         test_model.test(sess, val_data_set)
 

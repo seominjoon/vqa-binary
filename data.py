@@ -5,7 +5,7 @@ import json
 
 
 class DataSet(object):
-    def __init__(self, batch_size, idxs, image_rep_ds, image_idxs, sent_ds, lens, labels=None):
+    def __init__(self, batch_size, idxs, image_rep_ds, image_idxs, sent_ds, lens, labels=None, include_leftover=False):
         """
 
         :param config:
@@ -28,11 +28,14 @@ class DataSet(object):
         self.idx_in_epoch = 0
         self.num_epochs_completed = 0
         self.num_examples = len(idxs)
-        self.num_batches = self.num_examples / self.batch_size
+        self.num_batches = self.num_examples / self.batch_size + int(include_leftover)
+        self.include_leftover = include_leftover
 
     def get_next_labeled_batch(self):
         assert self.has_next_batch(), "End of epoch. Call 'complete_epoch()' to rewind."
         from_, to = self.idx_in_epoch, self.idx_in_epoch + self.batch_size
+        if self.include_leftover and to > self.num_examples:
+            to = self.num_examples
         cur_idxs = self.idxs[from_:to]
         cur_image_idxs = self.image_idxs[cur_idxs]
         image_rep_batch = np.array([self.image_rep_ds[cur_image_idx] for cur_image_idx in cur_image_idxs])
@@ -43,6 +46,8 @@ class DataSet(object):
         return image_rep_batch, sent_batch, len_batch, label_batch
 
     def has_next_batch(self):
+        if self.include_leftover:
+            return self.idx_in_epoch + 1 < self.num_examples
         return self.idx_in_epoch + self.batch_size <= self.num_examples
 
     def complete_epoch(self):

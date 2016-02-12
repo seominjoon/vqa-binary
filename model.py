@@ -13,10 +13,8 @@ class Model(object):
         self.mode = mode
         with tf_graph.as_default():
             self._build_tf_graph()
-            if log_dir is not None:
-                self.writer = tf.train.SummaryWriter(log_dir, tf_graph.as_graph_def())
-            else:
-                self.writer = None
+            self.writer = tf.train.SummaryWriter(log_dir, tf_graph.as_graph_def()) if log_dir else None
+            self.saver = tf.train.Saver()
 
     def _build_tf_graph(self):
         params = self.params
@@ -112,7 +110,7 @@ class Model(object):
         feed_dict[self.learning_rate] = learning_rate
         return sess.run([self.opt_op, self.summary, self.global_step], feed_dict=feed_dict)
 
-    def train(self, sess, train_data_set, learning_rate, saver=None):
+    def train(self, sess, train_data_set, learning_rate):
         assert self.mode == 'train', 'This model is not for training!'
         assert isinstance(train_data_set, DataSet)
         params = self.params
@@ -138,15 +136,15 @@ class Model(object):
                 target_batch[i, :] = target
             result = self.train_batch(sess, image_rep_batch, sent_batch, len_batch, target_batch, learning_rate)
             summary_str, global_step = result[1], result[2]
-            if self.writer:
-                self.writer.add_summary(summary_str, global_step)
+            if self.writer: self.writer.add_summary(summary_str, global_step)
             pbar.update(num_batches_completed)
         pbar.finish()
 
         train_data_set.complete_epoch()
-        if saver:
-            print "saving ... "
-            saver.save(sess, self.params.save_path, global_step=self.global_step)
+
+    def save(self, sess, save_dir):
+        print "saving ... "
+        self.saver.save(sess, save_dir, global_step=self.global_step)
 
     def test(self, sess, test_data_set):
         assert isinstance(test_data_set, DataSet)
@@ -154,7 +152,7 @@ class Model(object):
         print "testing 10 x %d examples..." % test_data_set.batch_size
         pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=10).start()
         num_corrects = 0
-        for num_batches_completed in xrange(10):
+        for num_batches_completed in xrange(test_data_set.num_batches):
             image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = test_data_set.get_next_labeled_batch()
             for image_rep, mc_sent, mc_len, mc_label in zip(image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch):
                 mc_image_rep = np.tile(image_rep, [len(mc_sent), 1])
@@ -169,4 +167,10 @@ class Model(object):
         acc = float(num_corrects)/total
         print "%d/%d = %.4f" % (num_corrects, total, acc)
 
+    def save(self, sess):
+        saver.restore(sess, "checkpoint")
+        print "Model restored."
+        pass
 
+    def load(self, sess):
+        pass
