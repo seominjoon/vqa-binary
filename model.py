@@ -21,7 +21,6 @@ class Model(object):
         max_sent_size = params.max_sent_size
         image_rep_size = params.image_rep_size
         vocab_size = params.vocab_size
-        emb_size = params.emb_size
 
         if self.mode == 'train':
             batch_size = params.train_batch_size
@@ -68,6 +67,7 @@ class Model(object):
 
         self.input_sent_batch = input_sent_batch
         self.input_image_batch = input_image_rep_batch
+        self.input_len_batch = input_len_batch
         self.target_batch = target_batch
         self.avg_loss = avg_loss
 
@@ -145,7 +145,7 @@ class Model(object):
             for image_rep, mc_sent, mc_label in zip(image_rep_batch, mc_sent_batch, mc_label_batch):
                 mc_image_rep = np.tile(image_rep, [len(mc_sent), 1])
                 mc_target = np.array([[0, 1] if label else [0, 1] for label in mc_label])
-                feed_dict = self._get_feed_dict(mc_image_rep, mc_sent, mc_target) 
+                feed_dict = self._get_feed_dict(mc_image_rep, mc_sent, mc_target)
                 correct = sess.run([self.correct], feed_dict=feed_dict)
                 num_corrects += correct[0]
             pbar.update(num_batches_completed)

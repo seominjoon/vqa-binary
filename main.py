@@ -19,6 +19,7 @@ flags.DEFINE_string("val_image_rep_h5", "val/image_rep.h5", "image_rep.h5 file p
 flags.DEFINE_string("val_image_idx", "val/image_idx.json", "image_idx.json file path for validation [val/image_idx.json]")
 flags.DEFINE_string("val_sent_h5", "val/sent.h5", "sent.h5 file path for validation [val/sent.h5]")
 flags.DEFINE_string("val_label", "val/label.json", "label.json file path for validation [val/label.json]")
+flags.DEFINE_string("val_len", "val/len.json", "len.json file path for valing [val/len.json]")
 flags.DEFINE_string("vocab_dict", "val/vocab_dict.json", "vocab_dict.json file path [val/vocab_dict.json]")
 flags.DEFINE_integer("num_epochs", 100, "Total number of epochs [100]")
 flags.DEFINE_float("learning_rate", 3e-4, "Learning rate [0.01]")
@@ -39,7 +40,7 @@ def main(_):
     FLAGS.image_rep_size = train_data_set.image_rep_size
     FLAGS.max_sent_size = train_data_set.max_sent_size
     FLAGS.num_mcs = train_data_set.num_mcs
-    val_data_set = read_vqa(FLAGS.val_batch_size, FLAGS.val_image_rep_h5, FLAGS.val_image_idx, FLAGS.val_sent_h5, FLAGS.val_label)
+    val_data_set = read_vqa(FLAGS.val_batch_size, FLAGS.val_image_rep_h5, FLAGS.val_image_idx, FLAGS.val_sent_h5, FLAGS.val_len, FLAGS.val_label)
 
     # pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=train_data_set.num_batches).start()
     tf_graph = tf.Graph()
