@@ -2,6 +2,8 @@ import json
 import os
 import argparse
 import re
+from collections import Counter
+
 import progressbar as pb
 import h5py
 import numpy as np
@@ -12,6 +14,7 @@ parser.add_argument('multiple_choices_list_path')
 parser.add_argument('answer_list_path')
 parser.add_argument('target_path')
 parser.add_argument('--vocab_dict_path', default='')
+parser.add_argument('--vocab_min_count', type=int, default=5)
 
 ARGS = parser.parse_args()
 
@@ -22,6 +25,7 @@ def prepro_questions(args):
     answer_list_path = args.answer_list_path
     vocab_dict_path = args.vocab_dict_path
     target_path = args.target_path
+    vocab_min_count = args.vocab_min_count
 
     print "Loading json files ..."
     question_list = json.load(open(question_list_path, 'rb'))
@@ -30,7 +34,7 @@ def prepro_questions(args):
     if vocab_dict_path:
         vocab_dict = json.load(open(vocab_dict_path, 'rb'))
     else:
-        vocab_set = set()
+        vocab_counter = Counter()
 
     tok_sents = []
     labels = []
@@ -55,17 +59,22 @@ def prepro_questions(args):
             max_sent_len = tok_sent_len
 
         if not vocab_dict_path:
-            vocab_set |= set(tok_question)
+            for tok in vocab_counter: vocab_counter[tok] += 1
             for tok_mc in tok_mcs:
-                vocab_set |= set(tok_mc)
-            vocab_set |= set(tok_answer)
+                for tok in tok_mc: vocab_counter[tok] += 1
+            for tok in tok_answer: vocab_counter[tok] += 1
 
         pbar.update(i+1)
     pbar.finish()
 
     if not vocab_dict_path:
-        vocab_dict = {word: idx+1 for idx, word in enumerate(list(sorted(vocab_set)))}
+        print "creating vocab dict ..."
+        vocab_list = zip(*sorted([pair for pair in vocab_counter.iteritems() if pair[1] > vocab_min_count],
+                                 key=lambda x: -x[1]))[0]
+
+        vocab_dict = {word: idx+1 for idx, word in enumerate(sorted(vocab_list))}
         vocab_dict['UNK'] = 0
+        print "vocab size: %d" % len(vocab_dict)
 
     print "Converting to numpy array ..."
     sents = [[[vocab_dict[word] for word in each_tok_sent] + [0] * (max_sent_len - len(each_tok_sent))
