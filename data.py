@@ -30,6 +30,8 @@ class DataSet(object):
         self.num_examples = len(idxs)
         self.num_batches = self.num_examples / self.batch_size + int(include_leftover)
         self.include_leftover = include_leftover
+        np.random.shuffle(self.idxs)
+
 
     def get_next_labeled_batch(self):
         assert self.has_next_batch(), "End of epoch. Call 'complete_epoch()' to rewind."

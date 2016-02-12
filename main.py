@@ -29,6 +29,7 @@ flags.DEFINE_integer("hidden_size", 300, "Hidden size of LSTM [300]")
 flags.DEFINE_string("save_path", "save", "Save path [save]")
 flags.DEFINE_boolean("restore", False, "Restore last checkpoint [False]")
 flags.DEFINE_string("log_dir", "summary", "Summary path [summary]")
+flags.DEFINE_boolean("draft", False, "Quick iteration of epochs? [False]")
 
 FLAGS = flags.FLAGS
 
@@ -51,7 +52,8 @@ def main(_):
     with tf.Session(graph=tf_graph) as sess:
         sess.run(tf.initialize_all_variables())
         if FLAGS.restore:
-            saver.restore(sess, "checkpoint")
+            checkpoint = tf.train.get_checkpoint_state("./")
+            saver.restore(sess, checkpoint.model_checkpoint_path)
             print "Model restored."
         else:
             print "Training %d epochs ..." % FLAGS.num_epochs
