@@ -27,6 +27,7 @@ flags.DEFINE_float("max_grad_norm", 40, "Max gradient norm during trainig [40]")
 flags.DEFINE_integer("num_layers", 1, "Number of LSTM layers [1]")
 flags.DEFINE_integer("hidden_size", 300, "Hidden size of LSTM [300]")
 flags.DEFINE_string("save_path", "save", "Save path [save]")
+flags.DEFINE_string("log_dir", "summary", "Summary path [summary]")
 
 FLAGS = flags.FLAGS
 
@@ -44,7 +45,7 @@ def main(_):
 
     # pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=train_data_set.num_batches).start()
     tf_graph = tf.Graph()
-    train_model = Model(tf_graph, FLAGS, 'train')
+    train_model = Model(tf_graph, FLAGS, 'train', log_dir=FLAGS.log_dir)
     test_model = Model(tf_graph, FLAGS, 'test')
     with tf.Session(graph=tf_graph) as sess:
         sess.run(tf.initialize_all_variables())
