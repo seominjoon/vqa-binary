@@ -27,7 +27,7 @@ flags.DEFINE_float("max_grad_norm", 40, "Max gradient norm during trainig [40]")
 flags.DEFINE_integer("num_layers", 1, "Number of LSTM layers [1]")
 flags.DEFINE_integer("hidden_size", 300, "Hidden size of LSTM [300]")
 flags.DEFINE_string("save_dir", "save", "Save path [save]")
-flags.DEFINE_string("log_dir", "summary", "Summary path [summary]")
+flags.DEFINE_string("log_dir", "log", "Summary path [log]")
 flags.DEFINE_boolean("bool_train", False, "Train? [False]")
 flags.DEFINE_boolean("draft", False, "Quick iteration of epochs? [False]")
 flags.DEFINE_integer("eval_num_batches", 50, "Number of batches to evaluate during training [50]")
@@ -47,7 +47,6 @@ def main(_):
     FLAGS.num_mcs = train_data_set.num_mcs
     val_data_set = read_vqa(FLAGS.val_batch_size, FLAGS.val_image_rep_h5, FLAGS.val_image_idx, FLAGS.val_sent_h5, FLAGS.val_len, FLAGS.val_label)
 
-    # pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=train_data_set.num_batches).start()
     tf_graph = tf.Graph()
     train_model = Model(tf_graph, FLAGS, 'train', log_dir=FLAGS.log_dir)
     test_model = Model(tf_graph, FLAGS, 'test')
@@ -60,10 +59,12 @@ def main(_):
                 train_model.train(sess, train_data_set, FLAGS.learning_rate)
                 test_model.test(sess, val_data_set)
                 if (epoch_idx + 1) % 3 == 0:
-                    print "evaluating %d x %d examples ..." % (FLAGS.eval_num_batches, val_data_set.batch_size)
+                    print "evaluating %d x %d examples (train data) ..." % (FLAGS.eval_num_batches, train_data_set.batch_size)
+                    test_model.test(sess, train_data_set, num_batches=FLAGS.eval_num_batches)
+                    print "evaluating %d x %d examples (val data) ..." % (FLAGS.eval_num_batches, val_data_set.batch_size)
                     test_model.test(sess, val_data_set, num_batches=FLAGS.eval_num_batches)
 
-        print "testing val data ..."
+        print "testing %d examples (val data) ..." % val_data_set.num_examples
         test_model.test(sess, val_data_set)
 
 

@@ -78,7 +78,6 @@ class Model(object):
         self.target_batch = target_batch
         self.avg_loss = avg_loss
 
-
         if self.mode == 'train':
             global_step = tf.Variable(0, name="global_step", trainable=False)
             opt = tf.train.GradientDescentOptimizer(learning_rate)
