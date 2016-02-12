@@ -59,7 +59,7 @@ def prepro_questions(args):
             max_sent_len = tok_sent_len
 
         if not vocab_dict_path:
-            for tok in vocab_counter: vocab_counter[tok] += 1
+            for tok in tok_question: vocab_counter[tok] += 1
             for tok_mc in tok_mcs:
                 for tok in tok_mc: vocab_counter[tok] += 1
             for tok in tok_answer: vocab_counter[tok] += 1
@@ -76,8 +76,11 @@ def prepro_questions(args):
         vocab_dict['UNK'] = 0
         print "vocab size: %d" % len(vocab_dict)
 
+    def _get(word_):
+        return vocab_dict[word] if word in vocab_dict else 0
+
     print "Converting to numpy array ..."
-    sents = [[[vocab_dict[word] for word in each_tok_sent] + [0] * (max_sent_len - len(each_tok_sent))
+    sents = [[[_get(word) for word in each_tok_sent] + [0] * (max_sent_len - len(each_tok_sent))
               for each_tok_sent in tok_sent] for tok_sent in tok_sents]
     sents = np.array(sents, dtype='int32')
 
