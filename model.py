@@ -36,7 +36,7 @@ class Model(object):
             target_batch = tf.placeholder(tf.int32, [batch_size, 2])
 
         # input sent embedding
-        with tf.variable_scope("emb"):
+        with tf.variable_scope("emb", reuse=self.mode=='test'):
             emb_mat = tf.get_variable("emb_mat", [vocab_size, hidden_size])
             x_batch = tf.nn.embedding_lookup(emb_mat, input_sent_batch)  # [N, d]
 
@@ -44,18 +44,18 @@ class Model(object):
         cell = rnn_cell.MultiRNNCell([single_cell] * num_layers)
         init_hidden_state = cell.zero_state(batch_size, tf.float32)
 
-        with tf.variable_scope('rnn'):
+        with tf.variable_scope('rnn', reuse=self.mode=='test'):
             x_split_batch = [tf.squeeze(x_each_batch, [1])
                              for x_each_batch in tf.split(1, max_sent_size, x_batch)]
             o_split_batch, h_last_batch = rnn.rnn(cell, x_split_batch, init_hidden_state)
 
-        with tf.variable_scope('trans'):
+        with tf.variable_scope('trans', reuse=self.mode=='test'):
             trans_mat = tf.get_variable("trans_mat", [image_rep_size, hidden_size])
             trans_bias = tf.get_variable("trans_bias", [1, hidden_size])
             m_batch = tf.matmul(input_image_rep_batch, trans_mat) + trans_bias
 
         # concatenate sent emb and image rep
-        with tf.variable_scope('out'):
+        with tf.variable_scope('out', reuse=self.mode=='test'):
             # logit_batch = h_last_batch * m_batch
             class_mat = tf.get_variable("class_mat", [hidden_size, 2])
             logit_batch = tf.matmul(o_split_batch[-1] * m_batch, class_mat)
@@ -81,7 +81,7 @@ class Model(object):
         elif self.mode == 'test':
             prob_batch = tf.reshape(tf.slice(logit_batch, [0, 1], [-1, 1]), [-1])
             label_batch = tf.reshape(tf.slice(target_batch, [0, 1], [-1, 1]), [-1])
-            correct = tf.equal(tf.argmax(prob_batch, 0), tf.argmax(label_batch, 0))
+            correct = tf.reshape(tf.equal(tf.argmax(prob_batch, 0), tf.argmax(label_batch, 0)), shape=[])
             self.correct = correct
 
     def _get_feed_dict(self, image_rep_batch, sent_batch, target_batch):
@@ -104,8 +104,9 @@ class Model(object):
         batch_size = params.train_batch_size
         max_sent_size = params.max_sent_size
 
+        print "training single epoch ..."
         pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=train_data_set.num_batches).start()
-        for num_batches_completed in xrange(train_data_set.num_batches):
+        for num_batches_completed in xrange(10): #train_data_set.num_batches):
             image_rep_batch, mc_sent_batch, mc_label_batch = train_data_set.get_next_labeled_batch()
             sent_batch, target_batch = np.zeros([batch_size, max_sent_size]), np.zeros([batch_size, 2])
             for i, (mc_sent, mc_label) in enumerate(zip(mc_sent_batch, mc_label_batch)):
@@ -128,16 +129,19 @@ class Model(object):
     def test(self, sess, test_data_set):
         assert isinstance(test_data_set, DataSet)
 
-        pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=test_data_set.num_batches).start()
+        print "testing 10 x %d examples..." % test_data_set.batch_size
+        pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=10).start()
         num_corrects = 0
         for num_batches_completed in xrange(10):
             image_rep_batch, mc_sent_batch, mc_label_batch = test_data_set.get_next_labeled_batch()
             for image_rep, mc_sent, mc_label in zip(image_rep_batch, mc_sent_batch, mc_label_batch):
                 mc_image_rep = np.tile(image_rep, [len(mc_sent), 1])
                 mc_target = np.array([[0, 1] if label else [0, 1] for label in mc_label])
-                feed_dict = self._get_feed_dict(mc_image_rep, mc_sent, mc_target)
+                feed_dict = self._get_feed_dict(mc_image_rep, mc_sent, mc_target) 
                 correct = sess.run([self.correct], feed_dict=feed_dict)
-                num_corrects += correct
+                num_corrects += correct[0]
+            pbar.update(num_batches_completed)
+        pbar.finish()
         test_data_set.complete_epoch()
         total = 10 * test_data_set.batch_size
         acc = float(num_corrects)/total
