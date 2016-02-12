@@ -41,15 +41,14 @@ def main(_):
     # pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=train_data_set.num_batches).start()
     tf_graph = tf.Graph()
     train_model = Model(tf_graph, FLAGS, 'train')
-    saver = tf.train.Saver()
     test_model = Model(tf_graph, FLAGS, 'test')
     with tf.Session(graph=tf_graph) as sess:
         sess.run(tf.initialize_all_variables())
+        saver = tf.train.Saver()
         for epoch_idx in xrange(FLAGS.num_epochs):
             print "epoch %d" % (epoch_idx + 1)
             train_model.train(sess, train_data_set, FLAGS.learning_rate, saver=saver)
             test_model.test(sess, train_data_set)
-            print "saving ..."
 
 
 if __name__ == "__main__":

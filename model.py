@@ -106,7 +106,7 @@ class Model(object):
 
         print "training single epoch ..."
         pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=train_data_set.num_batches).start()
-        for num_batches_completed in xrange(10): #train_data_set.num_batches):
+        for num_batches_completed in xrange(train_data_set.num_batches):
             image_rep_batch, mc_sent_batch, mc_label_batch = train_data_set.get_next_labeled_batch()
             sent_batch, target_batch = np.zeros([batch_size, max_sent_size]), np.zeros([batch_size, 2])
             for i, (mc_sent, mc_label) in enumerate(zip(mc_sent_batch, mc_label_batch)):
@@ -126,6 +126,7 @@ class Model(object):
 
         train_data_set.complete_epoch()
         if saver:
+            print "saving ... "
             saver.save(sess, self.params.save_path, global_step=self.global_step)
 
     def test(self, sess, test_data_set):
