@@ -53,7 +53,8 @@ def main(_):
         sess.run(tf.initialize_all_variables())
         saver = tf.train.Saver()
         if FLAGS.restore:
-            saver.restore(sess, "checkpoint")
+            checkpoint = tf.train.get_checkpoint_state("./")
+            saver.restore(sess, checkpoint.model_checkpoint_path)
             print "Model restored."
         else:
             print "Training %d epochs ..." % FLAGS.num_epochs

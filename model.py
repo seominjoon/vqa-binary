@@ -70,7 +70,7 @@ class Model(object):
         with tf.name_scope('loss'):
             losses = tf.nn.softmax_cross_entropy_with_logits(logit_batch, tf.cast(target_batch, 'float'))
             avg_loss = tf.reduce_mean(losses)
-            summaries.append(tf.scalar_summary('avg_loss', avg_loss))
+            summaries.append(tf.scalar_summary('%s_avg_loss' % self.mode, avg_loss))
 
         self.input_sent_batch = input_sent_batch
         self.input_image_batch = input_image_rep_batch
@@ -119,7 +119,6 @@ class Model(object):
         batch_size = params.train_batch_size
         max_sent_size = params.max_sent_size
 
-        print "training single epoch ..."
         pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=train_data_set.num_batches).start()
         for num_batches_completed in xrange(train_data_set.num_batches):
             image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = train_data_set.get_next_labeled_batch()
@@ -149,24 +148,28 @@ class Model(object):
             saver.save(sess, self.params.save_path, global_step=self.global_step)
 
     def test(self, sess, test_data_set):
+        r = 100
         assert isinstance(test_data_set, DataSet)
 
         print "testing 10 x %d examples..." % test_data_set.batch_size
-        pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=10).start()
+        pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=r).start()
         num_corrects = 0
-        for num_batches_completed in xrange(10):
+        total_avg_loss = 0
+        for num_batches_completed in xrange(r):
             image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = test_data_set.get_next_labeled_batch()
             for image_rep, mc_sent, mc_len, mc_label in zip(image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch):
                 mc_image_rep = np.tile(image_rep, [len(mc_sent), 1])
                 mc_target = np.array([[0, 1] if label else [1, 0] for label in mc_label])
                 feed_dict = self._get_feed_dict(mc_image_rep, mc_sent, mc_len, mc_target)
-                correct, = sess.run([self.correct,], feed_dict=feed_dict)
+                correct, each_avg_loss = sess.run([self.correct, self.avg_loss], feed_dict=feed_dict)
                 num_corrects += correct
+                total_avg_loss += each_avg_loss
             pbar.update(num_batches_completed)
         pbar.finish()
         test_data_set.complete_epoch()
-        total = 10 * test_data_set.batch_size
+        total = r * test_data_set.batch_size
         acc = float(num_corrects)/total
-        print "%d/%d = %.4f" % (num_corrects, total, acc)
+        avg_loss = total_avg_loss/total
+        print "%d/%d = %.4f, loss=%.4f" % (num_corrects, total, acc, avg_loss)
 
 
