@@ -1,3 +1,5 @@
+import os
+
 import tensorflow as tf
 from tensorflow.python.ops import rnn_cell, rnn
 import numpy as np
@@ -117,7 +119,9 @@ class Model(object):
         batch_size = params.train_batch_size
         max_sent_size = params.max_sent_size
 
-        pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=train_data_set.num_batches).start()
+        pbar = pb.ProgressBar(widgets=["epoch %d:" % train_data_set.idx_in_epoch,
+                                       pb.Percentage(), pb.Bar(), pb.Timer()], maxval=train_data_set.num_batches)
+        pbar.start()
         for num_batches_completed in xrange(train_data_set.num_batches):
             image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = train_data_set.get_next_labeled_batch()
             sent_batch, len_batch, target_batch = np.zeros([batch_size, max_sent_size]), np.zeros([batch_size]), np.zeros([batch_size, 2])
@@ -141,19 +145,16 @@ class Model(object):
 
         train_data_set.complete_epoch()
 
-    def save(self, sess, save_dir):
-        print "saving ... "
-        self.saver.save(sess, save_dir, global_step=self.global_step)
-
-    def test(self, sess, test_data_set):
-        r = 100
+    def test(self, sess, test_data_set, num_batches=None):
         assert isinstance(test_data_set, DataSet)
 
-        print "testing 10 x %d examples..." % test_data_set.batch_size
-        pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=r).start()
+        if num_batches is None:
+            num_batches = test_data_set.num_batches
+
+        pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.ETA()], maxval=num_batches).start()
         num_corrects = 0
         total_avg_loss = 0
-        for num_batches_completed in xrange(r):
+        for num_batches_completed in xrange(num_batches):
             image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = test_data_set.get_next_labeled_batch()
             for image_rep, mc_sent, mc_len, mc_label in zip(image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch):
                 mc_image_rep = np.tile(image_rep, [len(mc_sent), 1])
@@ -165,15 +166,17 @@ class Model(object):
             pbar.update(num_batches_completed)
         pbar.finish()
         test_data_set.complete_epoch()
-        total = r * test_data_set.batch_size
+        total = num_batches * test_data_set.batch_size
         acc = float(num_corrects)/total
         avg_loss = total_avg_loss/total
         print "%d/%d = %.4f, loss=%.4f" % (num_corrects, total, acc, avg_loss)
 
-    def save(self, sess):
-        saver.restore(sess, "checkpoint")
-        print "Model restored."
-        pass
+    def save(self, sess, save_dir):
+        print "saving ..."
+        save_path = os.path.join(save_dir, 'model')
+        self.saver.save(sess, save_path, self.global_step)
 
-    def load(self, sess):
-        pass
+    def load(self, sess, save_dir):
+        print "loading ..."
+        checkpoint = tf.train.get_checkpoint_state(save_dir)
+        self.saver.restore(sess, checkpoint.model_checkpoint_path)

@@ -26,10 +26,12 @@ flags.DEFINE_float("learning_rate", 3e-4, "Learning rate [0.01]")
 flags.DEFINE_float("max_grad_norm", 40, "Max gradient norm during trainig [40]")
 flags.DEFINE_integer("num_layers", 1, "Number of LSTM layers [1]")
 flags.DEFINE_integer("hidden_size", 300, "Hidden size of LSTM [300]")
-flags.DEFINE_string("save_path", "save", "Save path [save]")
-flags.DEFINE_boolean("restore", False, "Restore last checkpoint [False]")
+flags.DEFINE_string("save_dir", "save", "Save path [save]")
 flags.DEFINE_string("log_dir", "summary", "Summary path [summary]")
+flags.DEFINE_boolean("bool_train", False, "Train? [False]")
 flags.DEFINE_boolean("draft", False, "Quick iteration of epochs? [False]")
+flags.DEFINE_integer("eval_num_batches", 50, "Number of batches to evaluate during training [50]")
+flags.DEFINE_integer("eval_period", 3, "Evaluation period [3]")
 
 FLAGS = flags.FLAGS
 
@@ -47,21 +49,27 @@ def main(_):
 
     # pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=train_data_set.num_batches).start()
     tf_graph = tf.Graph()
-    train_model = Model(tf_graph, FLAGS, 'train', log_dir=FLAGS.log_dir)
+    if FLAGS.bool_train:
+        train_model = Model(tf_graph, FLAGS, 'train', log_dir=FLAGS.log_dir)
     test_model = Model(tf_graph, FLAGS, 'test')
     with tf.Session(graph=tf_graph) as sess:
         sess.run(tf.initialize_all_variables())
-        if FLAGS.restore:
-            checkpoint = tf.train.get_checkpoint_state("./")
-            saver.restore(sess, checkpoint.model_checkpoint_path)
-            print "Model restored."
-        else:
-            print "Training %d epochs ..." % FLAGS.num_epochs
+        if FLAGS.bool_train:
+            print "training %d epochs ..." % FLAGS.num_epochs
             for epoch_idx in xrange(FLAGS.num_epochs):
                 print "epoch %d:" % (epoch_idx + 1)
-                train_model.train(sess, train_data_set, FLAGS.learning_rate, save=True)
+                train_model.train(sess, train_data_set, FLAGS.learning_rate)
                 test_model.test(sess, val_data_set)
+                if (epoch_idx + 1) % 3 == 0:
+                    print "evaluating %d x %d examples ..." % (FLAGS.eval_num_batches, val_data_set.batch_size)
+                    test_model.test(sess, val_data_set, num_batches=FLAGS.eval_num_batches)
+
+        print "testing val data ..."
         test_model.test(sess, val_data_set)
+
+
+
+
 
 
 if __name__ == "__main__":
