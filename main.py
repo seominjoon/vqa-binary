@@ -40,6 +40,7 @@ def main(_):
     # pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=train_data_set.num_batches).start()
     tf_graph = tf.Graph()
     train_model = Model(tf_graph, FLAGS, 'train')
+    tf.get_variable_scope().reuse_variables()
     test_model = Model(tf_graph, FLAGS, 'test')
     with tf.Session(graph=tf_graph) as sess:
         sess.run(tf.initialize_all_variables())
