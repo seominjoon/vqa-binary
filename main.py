@@ -27,6 +27,7 @@ flags.DEFINE_float("max_grad_norm", 40, "Max gradient norm during trainig [40]")
 flags.DEFINE_integer("num_layers", 1, "Number of LSTM layers [1]")
 flags.DEFINE_integer("hidden_size", 300, "Hidden size of LSTM [300]")
 flags.DEFINE_string("save_path", "save", "Save path [save]")
+flags.DEFINE_boolean("restore", False, "Restore last checkpoint [False]")
 
 FLAGS = flags.FLAGS
 
@@ -49,10 +50,16 @@ def main(_):
     with tf.Session(graph=tf_graph) as sess:
         sess.run(tf.initialize_all_variables())
         saver = tf.train.Saver()
-        for epoch_idx in xrange(FLAGS.num_epochs):
-            print "epoch %d" % (epoch_idx + 1)
-            train_model.train(sess, train_data_set, FLAGS.learning_rate, saver=saver)
-            test_model.test(sess, val_data_set)
+        if FLAGS.restore:
+            saver.restore(sess, "checkpoint")
+            print "Model restored."
+        else:
+            print "Training %d epochs ..." % FLAGS.num_epochs
+            for epoch_idx in xrange(FLAGS.num_epochs):
+                print "epoch %d:" % (epoch_idx + 1)
+                train_model.train(sess, train_data_set, FLAGS.learning_rate, saver=saver)
+                test_model.test(sess, val_data_set)
+        test_model.test(sess, val_data_set)
 
 
 if __name__ == "__main__":
