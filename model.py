@@ -138,6 +138,7 @@ class Model(object):
                 feed_dict = self._get_feed_dict(mc_image_rep, mc_sent, mc_target)
                 correct = sess.run([self.correct], feed_dict=feed_dict)
                 num_corrects += correct
+        test_data_set.complete_epoch()
         total = 10 * test_data_set.batch_size
         acc = float(num_corrects)/total
         print "%d/%d = %.4f" % (num_corrects, total, acc)
