@@ -17,15 +17,20 @@ class Model(object):
     def _build_tf_graph(self):
         params = self.params
         num_layers = params.num_layers
-        batch_size = params.train_batch_size
         hidden_size = params.hidden_size
         max_sent_size = params.max_sent_size
         image_rep_size = params.image_rep_size
         vocab_size = params.vocab_size
 
+        if self.mode == 'train':
+            batch_size = params.train_batch_size
+        elif self.mode == 'test':
+            batch_size = params.num_mcs
+
         # placeholders
-        with tf.name_scope("ph"):
-            learning_rate = tf.placeholder('float', name='lr')
+        with tf.name_scope("%s/ph" % self.mode):
+            if self.mode == 'train':
+                learning_rate = tf.placeholder('float', name='lr')
             input_sent_batch = tf.placeholder(tf.int32, [batch_size, max_sent_size], 'sent')
             input_image_rep_batch = tf.placeholder(tf.float32, [batch_size, image_rep_size], 'image_rep')
             target_batch = tf.placeholder(tf.int32, [batch_size, 2])
@@ -62,7 +67,6 @@ class Model(object):
         self.input_sent_batch = input_sent_batch
         self.input_image_batch = input_image_rep_batch
         self.target_batch = target_batch
-        self.learning_rate = learning_rate
         self.avg_loss = avg_loss
 
         if self.mode == 'train':
@@ -73,13 +77,23 @@ class Model(object):
             opt_op = opt.apply_gradients(clipped_grads_and_vars, global_step=global_step)
             self.opt_op = opt_op
             self.global_step = global_step
+            self.learning_rate = learning_rate
+        elif self.mode == 'test':
+            prob_batch = tf.reshape(tf.slice(logit_batch, [0, 1], [-1, 1]), [-1])
+            label_batch = tf.reshape(tf.slice(target_batch, [0, 1], [-1, 1]), [-1])
+            correct = tf.equal(tf.argmax(prob_batch, 0), tf.argmax(label_batch, 0))
+            self.correct = correct
+
+    def _get_feed_dict(self, image_rep_batch, sent_batch, target_batch):
+        feed_dict = {self.input_image_batch: image_rep_batch,
+                     self.input_sent_batch: sent_batch,
+                     self.target_batch: target_batch}
+        return feed_dict
 
     def train_batch(self, sess, image_rep_batch, sent_batch, target_batch, learning_rate):
         assert self.mode == 'train', "This model is not for training!"
-        feed_dict = {self.input_image_batch: image_rep_batch,
-                     self.input_sent_batch: sent_batch,
-                     self.target_batch: target_batch,
-                     self.learning_rate: learning_rate}
+        feed_dict = self._get_feed_dict(image_rep_batch, sent_batch, target_batch)
+        feed_dict[self.learning_rate] = learning_rate
         sess.run(self.opt_op, feed_dict=feed_dict)
         return None
 
@@ -102,7 +116,7 @@ class Model(object):
                     delta_idx = np.random.randint(params.num_mcs-1) + 1
                     new_idx = correct_idx - delta_idx
                     sent, label = mc_sent[new_idx], mc_label[new_idx]
-                target = np.array([0,1]) if label else np.array([1,0])
+                target = np.array([0, 1]) if label else np.array([1, 0])
                 sent_batch[i, :] = sent
                 target_batch[i, :] = target
             result = self.train_batch(sess, image_rep_batch, sent_batch, target_batch, learning_rate)
@@ -110,3 +124,23 @@ class Model(object):
         pbar.finish()
 
         train_data_set.complete_epoch()
+
+    def test(self, sess, test_data_set):
+        assert self.mode == 'test', 'This model is not for testing!'
+        assert isinstance(test_data_set, DataSet)
+
+        pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=test_data_set.num_batches).start()
+        num_corrects = 0
+        for num_batches_completed in xrange(10):
+            image_rep_batch, mc_sent_batch, mc_label_batch = test_data_set.get_next_labeled_batch()
+            for image_rep, mc_sent, mc_label in zip(image_rep_batch, mc_sent_batch, mc_label_batch):
+                mc_image_rep = np.tile(image_rep, [len(mc_sent), 1])
+                mc_target = np.array([[0, 1] if label else [0, 1] for label in mc_label])
+                feed_dict = self._get_feed_dict(mc_image_rep, mc_sent, mc_target)
+                correct = sess.run([self.correct], feed_dict=feed_dict)
+                num_corrects += correct
+        total = 10 * test_data_set.batch_size
+        acc = float(num_corrects)/total
+        print "%d/%d = %.4f" % (num_corrects, total, acc)
+
+
