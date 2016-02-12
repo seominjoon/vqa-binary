@@ -31,6 +31,7 @@ FLAGS = flags.FLAGS
 def main(_):
     vocab_dict = json.load(open(FLAGS.vocab_dict, 'rb'))
     FLAGS.vocab_size = len(vocab_dict)
+    print "vocab size: %d" % len(vocab_dict)
 
     train_data_set = read_vqa(FLAGS.train_batch_size, FLAGS.train_image_rep_h5, FLAGS.train_image_idx, FLAGS.train_sent_h5, FLAGS.train_label)
     FLAGS.image_rep_size = train_data_set.image_rep_size
