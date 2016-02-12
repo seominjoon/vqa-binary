@@ -97,7 +97,7 @@ class Model(object):
         sess.run(self.opt_op, feed_dict=feed_dict)
         return None
 
-    def train(self, sess, train_data_set, learning_rate):
+    def train(self, sess, train_data_set, learning_rate, saver=None):
         assert self.mode == 'train', 'This model is not for training!'
         assert isinstance(train_data_set, DataSet)
         params = self.params
@@ -125,6 +125,8 @@ class Model(object):
         pbar.finish()
 
         train_data_set.complete_epoch()
+        if saver:
+            saver.save(sess, self.params.save_path, global_step=self.global_step)
 
     def test(self, sess, test_data_set):
         assert isinstance(test_data_set, DataSet)

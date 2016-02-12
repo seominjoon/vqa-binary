@@ -24,6 +24,7 @@ flags.DEFINE_float("learning_rate", 0.01, "Learning rate [0.01]")
 flags.DEFINE_float("max_grad_norm", 40, "Max gradient norm during trainig [40]")
 flags.DEFINE_integer("num_layers", 1, "Number of LSTM layers [1]")
 flags.DEFINE_integer("hidden_size", 200, "Hidden size of LSTM [200]")
+flags.DEFINE_string("save_path", "save", "Save path [save]")
 
 FLAGS = flags.FLAGS
 
@@ -40,13 +41,15 @@ def main(_):
     # pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=train_data_set.num_batches).start()
     tf_graph = tf.Graph()
     train_model = Model(tf_graph, FLAGS, 'train')
+    saver = tf.train.Saver()
     test_model = Model(tf_graph, FLAGS, 'test')
     with tf.Session(graph=tf_graph) as sess:
         sess.run(tf.initialize_all_variables())
         for epoch_idx in xrange(FLAGS.num_epochs):
             print "epoch %d" % (epoch_idx + 1)
-            train_model.train(sess, train_data_set, FLAGS.learning_rate)
+            train_model.train(sess, train_data_set, FLAGS.learning_rate, saver=saver)
             test_model.test(sess, train_data_set)
+            print "saving ..."
 
 
 if __name__ == "__main__":
