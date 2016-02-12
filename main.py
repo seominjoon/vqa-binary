@@ -52,7 +52,7 @@ def main(_):
         for epoch_idx in xrange(FLAGS.num_epochs):
             print "epoch %d" % (epoch_idx + 1)
             train_model.train(sess, train_data_set, FLAGS.learning_rate, saver=saver)
-            test_model.test(sess, train_data_set)
+            test_model.test(sess, val_data_set)
 
 
 if __name__ == "__main__":

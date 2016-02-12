@@ -59,7 +59,7 @@ class Model(object):
         with tf.variable_scope('out', reuse=self.mode=='test'):
             # logit_batch = h_last_batch * m_batch
             class_mat = tf.get_variable("class_mat", [hidden_size, 2])
-            logit_batch = tf.matmul(o_split_batch[-1] * m_batch, class_mat)
+            logit_batch = tf.matmul(tf.split(1, 2, h_last_batch)[1] * m_batch, class_mat)
 
         with tf.name_scope('loss'):
             losses = tf.nn.softmax_cross_entropy_with_logits(logit_batch, tf.cast(target_batch, 'float'))
@@ -83,8 +83,10 @@ class Model(object):
         elif self.mode == 'test':
             prob_batch = tf.reshape(tf.slice(logit_batch, [0, 1], [-1, 1]), [-1])
             label_batch = tf.reshape(tf.slice(target_batch, [0, 1], [-1, 1]), [-1])
-            correct = tf.reshape(tf.equal(tf.argmax(prob_batch, 0), tf.argmax(label_batch, 0)), shape=[])
+            correct = tf.equal(tf.argmax(prob_batch, 0), tf.argmax(label_batch, 0))
             self.correct = correct
+            self.prob_batch =prob_batch
+            self.label_batch = label_batch
 
     def _get_feed_dict(self, image_rep_batch, sent_batch, len_batch, target_batch=None):
         feed_dict = {self.input_image_batch: image_rep_batch,
@@ -98,8 +100,7 @@ class Model(object):
         assert self.mode == 'train', "This model is not for training!"
         feed_dict = self._get_feed_dict(image_rep_batch, sent_batch, len_batch, target_batch)
         feed_dict[self.learning_rate] = learning_rate
-        sess.run(self.opt_op, feed_dict=feed_dict)
-        return None
+        return sess.run([self.opt_op, self.avg_loss], feed_dict=feed_dict)
 
     def train(self, sess, train_data_set, learning_rate, saver=None):
         assert self.mode == 'train', 'This model is not for training!'
@@ -110,7 +111,7 @@ class Model(object):
 
         print "training single epoch ..."
         pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=train_data_set.num_batches).start()
-        for num_batches_completed in xrange(train_data_set.num_batches):
+        for num_batches_completed in xrange(10): #train_data_set.num_batches):
             image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = train_data_set.get_next_labeled_batch()
             sent_batch, len_batch, target_batch = np.zeros([batch_size, max_sent_size]), np.zeros([batch_size]), np.zeros([batch_size, 2])
             for i, (mc_sent, mc_len, mc_label) in enumerate(zip(mc_sent_batch, mc_len_batch, mc_label_batch)):
@@ -141,13 +142,13 @@ class Model(object):
         pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=10).start()
         num_corrects = 0
         for num_batches_completed in xrange(10):
-            image_rep_batch, mc_sent_batch, mc_label_batch = test_data_set.get_next_labeled_batch()
-            for image_rep, mc_sent, mc_label in zip(image_rep_batch, mc_sent_batch, mc_label_batch):
+            image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = test_data_set.get_next_labeled_batch()
+            for image_rep, mc_sent, mc_len, mc_label in zip(image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch):
                 mc_image_rep = np.tile(image_rep, [len(mc_sent), 1])
-                mc_target = np.array([[0, 1] if label else [0, 1] for label in mc_label])
-                feed_dict = self._get_feed_dict(mc_image_rep, mc_sent, mc_target)
-                correct = sess.run([self.correct], feed_dict=feed_dict)
-                num_corrects += correct[0]
+                mc_target = np.array([[0, 1] if label else [1, 0] for label in mc_label])
+                feed_dict = self._get_feed_dict(mc_image_rep, mc_sent, mc_len, mc_target)
+                correct, p, l = sess.run([self.correct, self.prob_batch, self.label_batch], feed_dict=feed_dict)
+                num_corrects += correct
             pbar.update(num_batches_completed)
         pbar.finish()
         test_data_set.complete_epoch()
