@@ -15,6 +15,8 @@ class Model(object):
             self._build_tf_graph()
             if log_dir is not None:
                 self.writer = tf.train.SummaryWriter(log_dir, tf_graph.as_graph_def())
+            else:
+                self.writer = None
 
     def _build_tf_graph(self):
         params = self.params
@@ -108,7 +110,7 @@ class Model(object):
         assert self.mode == 'train', "This model is not for training!"
         feed_dict = self._get_feed_dict(image_rep_batch, sent_batch, len_batch, target_batch)
         feed_dict[self.learning_rate] = learning_rate
-        return sess.run([self.opt_op, self.summary], feed_dict=feed_dict)
+        return sess.run([self.opt_op, self.summary, self.global_step], feed_dict=feed_dict)
 
     def train(self, sess, train_data_set, learning_rate, saver=None):
         assert self.mode == 'train', 'This model is not for training!'
@@ -135,8 +137,9 @@ class Model(object):
                 len_batch[i] = len_
                 target_batch[i, :] = target
             result = self.train_batch(sess, image_rep_batch, sent_batch, len_batch, target_batch, learning_rate)
-            summary_str = result[1]
-            self.writer.add_summary(summary_str, self.global_step)
+            summary_str, global_step = result[1], result[2]
+            if self.writer:
+                self.writer.add_summary(summary_str, global_step)
             pbar.update(num_batches_completed)
         pbar.finish()
 
