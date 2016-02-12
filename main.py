@@ -28,6 +28,7 @@ flags.DEFINE_integer("num_layers", 1, "Number of LSTM layers [1]")
 flags.DEFINE_integer("hidden_size", 300, "Hidden size of LSTM [300]")
 flags.DEFINE_string("save_path", "save", "Save path [save]")
 flags.DEFINE_string("log_dir", "summary", "Summary path [summary]")
+flags.DEFINE_boolean("draft", False, "Quick iteration of epochs? [False]")
 
 FLAGS = flags.FLAGS
 
