@@ -7,12 +7,14 @@ from data import DataSet
 
 
 class Model(object):
-    def __init__(self, tf_graph, params, mode):
+    def __init__(self, tf_graph, params, mode, log_dir=None):
         self.tf_graph = tf_graph
         self.params = params
         self.mode = mode
         with tf_graph.as_default():
             self._build_tf_graph()
+            if log_dir is not None:
+                self.writer = tf.train.SummaryWriter(log_dir, tf_graph.as_graph_def())
 
     def _build_tf_graph(self):
         params = self.params
@@ -21,6 +23,8 @@ class Model(object):
         max_sent_size = params.max_sent_size
         image_rep_size = params.image_rep_size
         vocab_size = params.vocab_size
+
+        summaries = []
 
         if self.mode == 'train':
             batch_size = params.train_batch_size
@@ -64,12 +68,14 @@ class Model(object):
         with tf.name_scope('loss'):
             losses = tf.nn.softmax_cross_entropy_with_logits(logit_batch, tf.cast(target_batch, 'float'))
             avg_loss = tf.reduce_mean(losses)
+            summaries.append(tf.scalar_summary('avg_loss', avg_loss))
 
         self.input_sent_batch = input_sent_batch
         self.input_image_batch = input_image_rep_batch
         self.input_len_batch = input_len_batch
         self.target_batch = target_batch
         self.avg_loss = avg_loss
+
 
         if self.mode == 'train':
             global_step = tf.Variable(0, name="global_step", trainable=False)
@@ -88,6 +94,8 @@ class Model(object):
             self.prob_batch =prob_batch
             self.label_batch = label_batch
 
+        self.summary = tf.merge_summary(summaries)
+
     def _get_feed_dict(self, image_rep_batch, sent_batch, len_batch, target_batch=None):
         feed_dict = {self.input_image_batch: image_rep_batch,
                      self.input_sent_batch: sent_batch,
@@ -100,7 +108,7 @@ class Model(object):
         assert self.mode == 'train', "This model is not for training!"
         feed_dict = self._get_feed_dict(image_rep_batch, sent_batch, len_batch, target_batch)
         feed_dict[self.learning_rate] = learning_rate
-        return sess.run([self.opt_op, self.avg_loss], feed_dict=feed_dict)
+        return sess.run([self.opt_op, self.summary], feed_dict=feed_dict)
 
     def train(self, sess, train_data_set, learning_rate, saver=None):
         assert self.mode == 'train', 'This model is not for training!'
@@ -127,6 +135,8 @@ class Model(object):
                 len_batch[i] = len_
                 target_batch[i, :] = target
             result = self.train_batch(sess, image_rep_batch, sent_batch, len_batch, target_batch, learning_rate)
+            summary_str = result[1]
+            self.writer.add_summary(summary_str, self.global_step)
             pbar.update(num_batches_completed)
         pbar.finish()
 
@@ -147,7 +157,7 @@ class Model(object):
                 mc_image_rep = np.tile(image_rep, [len(mc_sent), 1])
                 mc_target = np.array([[0, 1] if label else [1, 0] for label in mc_label])
                 feed_dict = self._get_feed_dict(mc_image_rep, mc_sent, mc_len, mc_target)
-                correct, p, l = sess.run([self.correct, self.prob_batch, self.label_batch], feed_dict=feed_dict)
+                correct, = sess.run([self.correct,], feed_dict=feed_dict)
                 num_corrects += correct
             pbar.update(num_batches_completed)
         pbar.finish()
