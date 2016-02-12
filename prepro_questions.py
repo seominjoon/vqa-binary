@@ -64,8 +64,8 @@ def prepro_questions(args):
     pbar.finish()
 
     if not vocab_dict_path:
-        vocab_dict = {word: idx+2 for idx, word in enumerate(list(sorted(vocab_set)))}
-        vocab_dict['UNK'] = 1
+        vocab_dict = {word: idx+1 for idx, word in enumerate(list(sorted(vocab_set)))}
+        vocab_dict['UNK'] = 0
 
     print "Converting to numpy array ..."
     sents = [[[vocab_dict[word] for word in each_tok_sent] + [0] * (max_sent_len - len(each_tok_sent))
