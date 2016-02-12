@@ -21,6 +21,7 @@ class Model(object):
         max_sent_size = params.max_sent_size
         image_rep_size = params.image_rep_size
         vocab_size = params.vocab_size
+        emb_size = params.emb_size
 
         if self.mode == 'train':
             batch_size = params.train_batch_size
@@ -33,6 +34,7 @@ class Model(object):
                 learning_rate = tf.placeholder('float', name='lr')
             input_sent_batch = tf.placeholder(tf.int32, [batch_size, max_sent_size], 'sent')
             input_image_rep_batch = tf.placeholder(tf.float32, [batch_size, image_rep_size], 'image_rep')
+            input_len_batch = tf.placeholder(tf.int8, [batch_size], 'len')
             target_batch = tf.placeholder(tf.int32, [batch_size, 2])
 
         # input sent embedding
@@ -47,7 +49,7 @@ class Model(object):
         with tf.variable_scope('rnn', reuse=self.mode=='test'):
             x_split_batch = [tf.squeeze(x_each_batch, [1])
                              for x_each_batch in tf.split(1, max_sent_size, x_batch)]
-            o_split_batch, h_last_batch = rnn.rnn(cell, x_split_batch, init_hidden_state)
+            o_split_batch, h_last_batch = rnn.rnn(cell, x_split_batch, init_hidden_state, sequence_length=input_len_batch)
 
         with tf.variable_scope('trans', reuse=self.mode=='test'):
             trans_mat = tf.get_variable("trans_mat", [image_rep_size, hidden_size])
@@ -84,15 +86,17 @@ class Model(object):
             correct = tf.reshape(tf.equal(tf.argmax(prob_batch, 0), tf.argmax(label_batch, 0)), shape=[])
             self.correct = correct
 
-    def _get_feed_dict(self, image_rep_batch, sent_batch, target_batch):
+    def _get_feed_dict(self, image_rep_batch, sent_batch, len_batch, target_batch=None):
         feed_dict = {self.input_image_batch: image_rep_batch,
                      self.input_sent_batch: sent_batch,
-                     self.target_batch: target_batch}
+                     self.input_len_batch: len_batch}
+        if target_batch is not None:
+            feed_dict[self.target_batch] = target_batch
         return feed_dict
 
-    def train_batch(self, sess, image_rep_batch, sent_batch, target_batch, learning_rate):
+    def train_batch(self, sess, image_rep_batch, sent_batch, len_batch, target_batch, learning_rate):
         assert self.mode == 'train', "This model is not for training!"
-        feed_dict = self._get_feed_dict(image_rep_batch, sent_batch, target_batch)
+        feed_dict = self._get_feed_dict(image_rep_batch, sent_batch, len_batch, target_batch)
         feed_dict[self.learning_rate] = learning_rate
         sess.run(self.opt_op, feed_dict=feed_dict)
         return None
@@ -107,20 +111,21 @@ class Model(object):
         print "training single epoch ..."
         pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=train_data_set.num_batches).start()
         for num_batches_completed in xrange(train_data_set.num_batches):
-            image_rep_batch, mc_sent_batch, mc_label_batch = train_data_set.get_next_labeled_batch()
-            sent_batch, target_batch = np.zeros([batch_size, max_sent_size]), np.zeros([batch_size, 2])
-            for i, (mc_sent, mc_label) in enumerate(zip(mc_sent_batch, mc_label_batch)):
+            image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = train_data_set.get_next_labeled_batch()
+            sent_batch, len_batch, target_batch = np.zeros([batch_size, max_sent_size]), np.zeros([batch_size]), np.zeros([batch_size, 2])
+            for i, (mc_sent, mc_len, mc_label) in enumerate(zip(mc_sent_batch, mc_len_batch, mc_label_batch)):
                 correct_idx = np.argmax(mc_label)
                 if np.random.randint(2) > 0:
-                    sent, label = mc_sent[correct_idx], mc_label[correct_idx]
+                    sent, len_, label = mc_sent[correct_idx], mc_len[correct_idx], mc_label[correct_idx]
                 else:
                     delta_idx = np.random.randint(params.num_mcs-1) + 1
                     new_idx = correct_idx - delta_idx
-                    sent, label = mc_sent[new_idx], mc_label[new_idx]
+                    sent, len_, label = mc_sent[new_idx], mc_len[new_idx], mc_label[new_idx]
                 target = np.array([0, 1]) if label else np.array([1, 0])
                 sent_batch[i, :] = sent
+                len_batch[i] = len_
                 target_batch[i, :] = target
-            result = self.train_batch(sess, image_rep_batch, sent_batch, target_batch, learning_rate)
+            result = self.train_batch(sess, image_rep_batch, sent_batch, len_batch, target_batch, learning_rate)
             pbar.update(num_batches_completed)
         pbar.finish()
 

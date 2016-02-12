@@ -80,6 +80,7 @@ def prepro_questions(args):
         return vocab_dict[word] if word in vocab_dict else 0
 
     print "Converting to numpy array ..."
+    lens = [[len(each_tok_sent) for each_tok_sent in tok_sent] for tok_sent in tok_sents]
     sents = [[[_get(word) for word in each_tok_sent] + [0] * (max_sent_len - len(each_tok_sent))
               for each_tok_sent in tok_sent] for tok_sent in tok_sents]
     sents = np.array(sents, dtype='int32')
@@ -89,6 +90,7 @@ def prepro_questions(args):
     sent_path = os.path.join(target_path, "sent.h5")
     label_path = os.path.join(target_path, "label.json")
     vocab_dict_path = os.path.join(target_path, "vocab_dict.json")
+    len_path = os.path.join(target_path, "len.json")
 
 
     print "Dumping h5 file ..."
@@ -98,7 +100,9 @@ def prepro_questions(args):
 
     print "Dumping json files ..."
     json.dump(labels, open(label_path, 'wb'))
-    json.dump(vocab_dict, open(vocab_dict_path, 'wb'))
+    if not vocab_dict_path:
+        json.dump(vocab_dict, open(vocab_dict_path, 'wb'))
+    json.dump(lens, open(len_path, 'wb'))
 
 
 def _tokenize(raw):
