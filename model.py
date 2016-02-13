@@ -65,7 +65,7 @@ class Model(object):
 
             sent_trans_mat = tf.get_variable("sent_trans_mat", [hidden_size, common_size])
             sent_trans_bias = tf.get_variable("sent_trans_bias", [1, common_size])
-            s_batch = tf.tanh(tf.matmul(tf.split(1, 2, h_last_batch)[1], sent_trans_mat) + sent_trans_bias)
+            s_batch = tf.tanh(tf.matmul(tf.split(1, 2*num_layers, h_last_batch)[2*num_layers-1], sent_trans_mat) + sent_trans_bias)
 
         # concatenate sent emb and image rep
         with tf.variable_scope('out', reuse=self.mode=='test'):
@@ -125,7 +125,7 @@ class Model(object):
         max_sent_size = params.max_sent_size
 
         pbar = pb.ProgressBar(widgets=["epoch %d:" % (train_data_set.num_epochs_completed + 1),
-                                       pb.Percentage(), pb.Bar(), pb.Timer()], maxval=train_data_set.num_batches)
+                                       pb.Percentage(), pb.Bar(), pb.ETA()], maxval=train_data_set.num_batches)
         pbar.start()
         for num_batches_completed in xrange(num_batches):
             image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = train_data_set.get_next_labeled_batch()

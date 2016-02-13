@@ -23,7 +23,7 @@ flags.DEFINE_string("val_label", "val/label.json", "label.json file path for val
 flags.DEFINE_string("val_len", "val/len.json", "len.json file path for valing [val/len.json]")
 flags.DEFINE_string("vocab_dict", "val/vocab_dict.json", "vocab_dict.json file path [val/vocab_dict.json]")
 flags.DEFINE_integer("num_epochs", 100, "Total number of epochs [100]")
-flags.DEFINE_float("learning_rate", 3e-4, "Learning rate [0.01]")
+flags.DEFINE_float("learning_rate", 1e-2, "Learning rate [0.01]")
 flags.DEFINE_float("max_grad_norm", 40, "Max gradient norm during trainig [40]")
 flags.DEFINE_integer("num_layers", 3, "Number of LSTM layers [3]")
 flags.DEFINE_integer("hidden_size", 512, "Hidden size of LSTM [512]")
@@ -77,6 +77,8 @@ def main(_):
             for epoch_idx in xrange(num_epochs):
                 train_model.train(sess, train_data_set, FLAGS.learning_rate, writer=writer, num_batches=train_num_batches)
                 if (epoch_idx + 1) % eval_period == 0:
+                    print "evaluating %d x %d examples (train data) ..." % (eval_num_batches, train_data_set.batch_size)
+                    test_model.test(sess, train_data_set, num_batches=eval_num_batches)
                     print "evaluating %d x %d examples (val data) ..." % (eval_num_batches, val_data_set.batch_size)
                     test_model.test(sess, val_data_set, writer=writer, num_batches=eval_num_batches)
             print "saving model ..."
