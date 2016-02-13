@@ -24,6 +24,7 @@ class Model(object):
         max_sent_size = params.max_sent_size
         image_rep_size = params.image_rep_size
         vocab_size = params.vocab_size
+        common_size = params.common_size
 
         summaries = []
         global_step = tf.Variable(0, name="global_step", trainable=False)
@@ -58,15 +59,19 @@ class Model(object):
             o_split_batch, h_last_batch = rnn.rnn(cell, x_split_batch, init_hidden_state, sequence_length=input_len_batch)
 
         with tf.variable_scope('trans', reuse=self.mode=='test'):
-            trans_mat = tf.get_variable("trans_mat", [image_rep_size, hidden_size])
-            trans_bias = tf.get_variable("trans_bias", [1, hidden_size])
-            m_batch = tf.matmul(input_image_rep_batch, trans_mat) + trans_bias
+            image_trans_mat = tf.get_variable("image_trans_mat", [image_rep_size, common_size])
+            image_trans_bias = tf.get_variable("image_trans_bias", [1, common_size])
+            m_batch = tf.tanh(tf.matmul(input_image_rep_batch, image_trans_mat) + image_trans_bias)
+
+            sent_trans_mat = tf.get_variable("sent_trans_mat", [hidden_size, common_size])
+            sent_trans_bias = tf.get_variable("sent_trans_bias", [1, common_size])
+            s_batch = tf.tanh(tf.matmul(tf.split(1, 2, h_last_batch)[1], sent_trans_mat) + sent_trans_bias)
 
         # concatenate sent emb and image rep
         with tf.variable_scope('out', reuse=self.mode=='test'):
             # logit_batch = h_last_batch * m_batch
-            class_mat = tf.get_variable("class_mat", [hidden_size, 2])
-            logit_batch = tf.matmul(tf.split(1, 2, h_last_batch)[1] * m_batch, class_mat)
+            class_mat = tf.get_variable("class_mat", [common_size, 2])
+            logit_batch = tf.matmul(s_batch * m_batch, class_mat)
 
         with tf.name_scope('loss'):
             losses = tf.nn.softmax_cross_entropy_with_logits(logit_batch, tf.cast(target_batch, 'float'))

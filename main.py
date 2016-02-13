@@ -25,14 +25,15 @@ flags.DEFINE_string("vocab_dict", "val/vocab_dict.json", "vocab_dict.json file p
 flags.DEFINE_integer("num_epochs", 100, "Total number of epochs [100]")
 flags.DEFINE_float("learning_rate", 3e-4, "Learning rate [0.01]")
 flags.DEFINE_float("max_grad_norm", 40, "Max gradient norm during trainig [40]")
-flags.DEFINE_integer("num_layers", 1, "Number of LSTM layers [1]")
-flags.DEFINE_integer("hidden_size", 300, "Hidden size of LSTM [300]")
+flags.DEFINE_integer("num_layers", 3, "Number of LSTM layers [3]")
+flags.DEFINE_integer("hidden_size", 512, "Hidden size of LSTM [512]")
 flags.DEFINE_string("save_dir", "save", "Save path [save]")
 flags.DEFINE_string("log_dir", "log", "Summary path [log]")
 flags.DEFINE_boolean("bool_train", False, "Train? [False]")
 flags.DEFINE_boolean("draft", False, "Quick iteration of epochs? [False]")
 flags.DEFINE_integer("eval_num_batches", 50, "Number of batches to evaluate during training [50]")
 flags.DEFINE_integer("eval_period", 3, "Evaluation period [3]")
+flags.DEFINE_integer("common_size", 1024, "Common size [1024]")
 
 FLAGS = flags.FLAGS
 
