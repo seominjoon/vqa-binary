@@ -30,7 +30,7 @@ class DataSet(object):
         self.num_examples = len(idxs)
         self.num_batches = self.num_examples / self.batch_size + int(include_leftover)
         self.include_leftover = include_leftover
-        np.random.shuffle(self.idxs)
+        self.reset()
 
 
     def get_next_labeled_batch(self):
@@ -53,8 +53,11 @@ class DataSet(object):
         return self.idx_in_epoch + self.batch_size <= self.num_examples
 
     def complete_epoch(self):
-        self.idx_in_epoch = 0
+        self.reset()
         self.num_epochs_completed += 1
+
+    def reset(self):
+        self.idx_in_epoch = 0
         np.random.shuffle(self.idxs)
 
 def read_vqa(batch_size, image_rep_h5_path, image_idx_path, sent_h5_path, len_path, labels_path=None):

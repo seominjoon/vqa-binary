@@ -26,6 +26,8 @@ class Model(object):
         vocab_size = params.vocab_size
 
         summaries = []
+        global_step = tf.Variable(0, name="global_step", trainable=False)
+        self.global_step = global_step
 
         if self.mode == 'train':
             batch_size = params.train_batch_size
@@ -78,13 +80,11 @@ class Model(object):
         self.avg_loss = avg_loss
 
         if self.mode == 'train':
-            global_step = tf.Variable(0, name="global_step", trainable=False)
             opt = tf.train.GradientDescentOptimizer(learning_rate)
             grads_and_vars = opt.compute_gradients(losses)
             clipped_grads_and_vars = [(tf.clip_by_norm(grad, params.max_grad_norm), var) for grad, var in grads_and_vars]
             opt_op = opt.apply_gradients(clipped_grads_and_vars, global_step=global_step)
             self.opt_op = opt_op
-            self.global_step = global_step
             self.learning_rate = learning_rate
         elif self.mode == 'test':
             prob_batch = tf.reshape(tf.slice(logit_batch, [0, 1], [-1, 1]), [-1])
@@ -110,17 +110,19 @@ class Model(object):
         feed_dict[self.learning_rate] = learning_rate
         return sess.run([self.opt_op, self.summary, self.global_step], feed_dict=feed_dict)
 
-    def train(self, sess, train_data_set, learning_rate, writer=None):
+    def train(self, sess, train_data_set, learning_rate, writer=None, num_batches=None):
+        if num_batches is None:
+            num_batches = train_data_set.num_batches
         assert self.mode == 'train', 'This model is not for training!'
         assert isinstance(train_data_set, DataSet)
         params = self.params
         batch_size = params.train_batch_size
         max_sent_size = params.max_sent_size
 
-        pbar = pb.ProgressBar(widgets=["epoch %d:" % train_data_set.idx_in_epoch,
+        pbar = pb.ProgressBar(widgets=["epoch %d:" % (train_data_set.num_epochs_completed + 1),
                                        pb.Percentage(), pb.Bar(), pb.Timer()], maxval=train_data_set.num_batches)
         pbar.start()
-        for num_batches_completed in xrange(train_data_set.num_batches):
+        for num_batches_completed in xrange(num_batches):
             image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = train_data_set.get_next_labeled_batch()
             sent_batch, len_batch, target_batch = np.zeros([batch_size, max_sent_size]), np.zeros([batch_size]), np.zeros([batch_size, 2])
             for i, (mc_sent, mc_len, mc_label) in enumerate(zip(mc_sent_batch, mc_len_batch, mc_label_batch)):
@@ -158,25 +160,26 @@ class Model(object):
                 mc_image_rep = np.tile(image_rep, [len(mc_sent), 1])
                 mc_target = np.array([[0, 1] if label else [1, 0] for label in mc_label])
                 feed_dict = self._get_feed_dict(mc_image_rep, mc_sent, mc_len, mc_target)
-                correct, each_avg_loss = sess.run([self.correct, self.avg_loss], feed_dict=feed_dict)
+                correct, each_avg_loss, summary_str, global_step= sess.run([self.correct, self.avg_loss, self.summary, self.global_step], feed_dict=feed_dict)
                 num_corrects += correct
                 total_avg_loss += each_avg_loss
             pbar.update(num_batches_completed)
         pbar.finish()
-        test_data_set.complete_epoch()
+        test_data_set.reset()
         total = num_batches * test_data_set.batch_size
         acc = float(num_corrects)/total
         avg_loss = total_avg_loss/total
-        summary = tf.scalar_summary("%s_avg_loss" % self.mode, avg_loss)
-        if writer: writer.add_summary(summary.eval(session=sess), self.global_step.eval(session=sess))
+        if writer: writer.add_summary(summary_str, global_step)
+        """
+        summary = tf.scalar_summary("eval_%s_avg_loss" % self.mode, avg_loss)
+        if writer: writer.add_summary(summary.eval(session=sess), global_step)
+        """
         print "%d/%d = %.4f, loss=%.4f" % (num_corrects, total, acc, avg_loss)
 
     def save(self, sess, save_dir):
-        print "saving ..."
         save_path = os.path.join(save_dir, 'model')
         self.saver.save(sess, save_path, self.global_step)
 
     def load(self, sess, save_dir):
-        print "loading ..."
         checkpoint = tf.train.get_checkpoint_state(save_dir)
         self.saver.restore(sess, checkpoint.model_checkpoint_path)

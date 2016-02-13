@@ -1,4 +1,5 @@
 import json
+import os
 
 import tensorflow as tf
 import progressbar as pb
@@ -47,30 +48,47 @@ def main(_):
     FLAGS.num_mcs = train_data_set.num_mcs
     val_data_set = read_vqa(FLAGS.val_batch_size, FLAGS.val_image_rep_h5, FLAGS.val_image_idx, FLAGS.val_sent_h5, FLAGS.val_len, FLAGS.val_label)
 
+    save_dir = FLAGS.save_dir
+    if save_dir and not os.path.exists(save_dir):
+        os.mkdir(save_dir)
+
+    # Time-sensitive parameters. Will be altered if draft.
+    train_num_batches = train_data_set.num_batches
+    eval_num_batches = FLAGS.eval_num_batches
+    val_num_batches = val_data_set.num_batches
+    num_epochs = FLAGS.num_epochs
+    eval_period = FLAGS.eval_period
+    if FLAGS.draft:
+        train_num_batches = 5
+        eval_num_batches = 1
+        val_num_batches = 5
+        num_epochs = 5
+        eval_period = 1
+
     tf_graph = tf.Graph()
-    writer = tf.train.SummaryWriter(FLAGS.log_dir, tf_graph.as_graph_def())
     train_model = Model(tf_graph, FLAGS, 'train')
     test_model = Model(tf_graph, FLAGS, 'test')
+    writer = tf.train.SummaryWriter(FLAGS.log_dir, tf_graph.as_graph_def())
     with tf.Session(graph=tf_graph) as sess:
         sess.run(tf.initialize_all_variables())
         if FLAGS.bool_train:
-            print "training %d epochs ..." % FLAGS.num_epochs
-            for epoch_idx in xrange(FLAGS.num_epochs):
-                print "epoch %d:" % (epoch_idx + 1)
-                train_model.train(sess, train_data_set, FLAGS.learning_rate, writer=writer)
-                if (epoch_idx + 1) % 3 == 0:
-                    print "evaluating %d x %d examples (train data) ..." % (FLAGS.eval_num_batches, train_data_set.batch_size)
-                    test_model.test(sess, train_data_set, num_batches=FLAGS.eval_num_batches)
-                    print "evaluating %d x %d examples (val data) ..." % (FLAGS.eval_num_batches, val_data_set.batch_size)
-                    test_model.test(sess, val_data_set, num_batches=FLAGS.eval_num_batches)
+            print "training %d epochs ..." % num_epochs
+            for epoch_idx in xrange(num_epochs):
+                train_model.train(sess, train_data_set, FLAGS.learning_rate, writer=writer, num_batches=train_num_batches)
+                if (epoch_idx + 1) % eval_period == 0:
+                    print "evaluating %d x %d examples (val data) ..." % (eval_num_batches, val_data_set.batch_size)
+                    test_model.test(sess, val_data_set, writer=writer, num_batches=eval_num_batches)
+            print "saving model ..."
+            train_model.save(sess, FLAGS.save_dir)
         else:
+            print "loading model ..."
             train_model.load(sess, FLAGS.save_dir)
 
         print "testing %d examples (val data) ..." % val_data_set.num_examples
-        test_model.test(sess, val_data_set)
+        test_model.test(sess, val_data_set, num_batches=val_num_batches)
 
         print "testing %d examples (train data) ..." % train_data_set.num_examples
-        test_model.test(sess, train_data_set)
+        test_model.test(sess, train_data_set, num_batches=train_num_batches)
 
 
 
