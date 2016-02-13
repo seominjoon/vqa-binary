@@ -48,7 +48,8 @@ def main(_):
     val_data_set = read_vqa(FLAGS.val_batch_size, FLAGS.val_image_rep_h5, FLAGS.val_image_idx, FLAGS.val_sent_h5, FLAGS.val_len, FLAGS.val_label)
 
     tf_graph = tf.Graph()
-    train_model = Model(tf_graph, FLAGS, 'train', log_dir=FLAGS.log_dir)
+    writer = tf.train.SummaryWriter(FLAGS.log_dir, tf_graph.as_graph_def())
+    train_model = Model(tf_graph, FLAGS, 'train')
     test_model = Model(tf_graph, FLAGS, 'test')
     with tf.Session(graph=tf_graph) as sess:
         sess.run(tf.initialize_all_variables())
@@ -56,7 +57,7 @@ def main(_):
             print "training %d epochs ..." % FLAGS.num_epochs
             for epoch_idx in xrange(FLAGS.num_epochs):
                 print "epoch %d:" % (epoch_idx + 1)
-                train_model.train(sess, train_data_set, FLAGS.learning_rate)
+                train_model.train(sess, train_data_set, FLAGS.learning_rate, writer=writer)
                 if (epoch_idx + 1) % 3 == 0:
                     print "evaluating %d x %d examples (train data) ..." % (FLAGS.eval_num_batches, train_data_set.batch_size)
                     test_model.test(sess, train_data_set, num_batches=FLAGS.eval_num_batches)

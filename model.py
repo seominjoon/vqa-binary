@@ -9,13 +9,12 @@ from data import DataSet
 
 
 class Model(object):
-    def __init__(self, tf_graph, params, mode, log_dir=None):
+    def __init__(self, tf_graph, params, mode):
         self.tf_graph = tf_graph
         self.params = params
         self.mode = mode
         with tf_graph.as_default():
             self._build_tf_graph()
-            self.writer = tf.train.SummaryWriter(log_dir, tf_graph.as_graph_def()) if log_dir else None
             self.saver = tf.train.Saver()
 
     def _build_tf_graph(self):
@@ -111,7 +110,7 @@ class Model(object):
         feed_dict[self.learning_rate] = learning_rate
         return sess.run([self.opt_op, self.summary, self.global_step], feed_dict=feed_dict)
 
-    def train(self, sess, train_data_set, learning_rate):
+    def train(self, sess, train_data_set, learning_rate, writer=None):
         assert self.mode == 'train', 'This model is not for training!'
         assert isinstance(train_data_set, DataSet)
         params = self.params
@@ -138,13 +137,13 @@ class Model(object):
                 target_batch[i, :] = target
             result = self.train_batch(sess, image_rep_batch, sent_batch, len_batch, target_batch, learning_rate)
             summary_str, global_step = result[1], result[2]
-            if self.writer: self.writer.add_summary(summary_str, global_step)
+            if writer: writer.add_summary(summary_str, global_step)
             pbar.update(num_batches_completed)
         pbar.finish()
 
         train_data_set.complete_epoch()
 
-    def test(self, sess, test_data_set, num_batches=None):
+    def test(self, sess, test_data_set, num_batches=None, writer=None):
         assert isinstance(test_data_set, DataSet)
 
         if num_batches is None:
@@ -168,6 +167,8 @@ class Model(object):
         total = num_batches * test_data_set.batch_size
         acc = float(num_corrects)/total
         avg_loss = total_avg_loss/total
+        summary = tf.scalar_summary("%s_avg_loss" % self.mode, avg_loss)
+        if writer: writer.add_summary(summary.eval(session=sess), self.global_step.eval(session=sess))
         print "%d/%d = %.4f, loss=%.4f" % (num_corrects, total, acc, avg_loss)
 
     def save(self, sess, save_dir):
