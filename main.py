@@ -57,17 +57,19 @@ def main(_):
             for epoch_idx in xrange(FLAGS.num_epochs):
                 print "epoch %d:" % (epoch_idx + 1)
                 train_model.train(sess, train_data_set, FLAGS.learning_rate)
-                test_model.test(sess, val_data_set)
                 if (epoch_idx + 1) % 3 == 0:
                     print "evaluating %d x %d examples (train data) ..." % (FLAGS.eval_num_batches, train_data_set.batch_size)
                     test_model.test(sess, train_data_set, num_batches=FLAGS.eval_num_batches)
                     print "evaluating %d x %d examples (val data) ..." % (FLAGS.eval_num_batches, val_data_set.batch_size)
                     test_model.test(sess, val_data_set, num_batches=FLAGS.eval_num_batches)
+        else:
+            train_model.load(sess, FLAGS.save_dir)
 
         print "testing %d examples (val data) ..." % val_data_set.num_examples
         test_model.test(sess, val_data_set)
 
-
+        print "testing %d examples (train data) ..." % train_data_set.num_examples
+        test_model.test(sess, train_data_set)
 
 
 
