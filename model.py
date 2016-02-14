@@ -44,7 +44,8 @@ class Model(object):
         if mode == 'train': global_step = tf.Variable(0, name='global_step', trainable=False)
 
         with tf.variable_scope('variable', reuse=mode=='test') as shared_scope:
-            emb_mat = tf.get_variable("emb_mat", [vocab_size, rnn_hidden_size])
+            with tf.device("/cpu:0"):
+                emb_mat = tf.get_variable("emb_mat", [vocab_size, rnn_hidden_size])
             image_trans_mat = tf.get_variable("image_trans_mat", [image_rep_size, common_size])
             image_trans_bias = tf.get_variable("image_trans_bias", [1, common_size])
             sent_trans_mat = tf.get_variable("sent_trans_mat", [rnn_hidden_size, common_size])
