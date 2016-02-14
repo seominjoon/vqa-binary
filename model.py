@@ -25,6 +25,7 @@ class Model(object):
 
 
     def _build_tf_graph(self, mode):
+        print "building %s graph ..." % mode
         # Params
         params = self.params
         rnn_num_layers = params.rnn_num_layers
@@ -42,7 +43,7 @@ class Model(object):
 
         if mode == 'train': global_step = tf.Variable(0, name='global_step', trainable=False)
 
-        with tf.variable_scope('variable', reuse=(mode=='test')) as shared_scope:
+        with tf.variable_scope('variable', reuse=mode=='test') as shared_scope:
             emb_mat = tf.get_variable("emb_mat", [vocab_size, rnn_hidden_size])
             image_trans_mat = tf.get_variable("image_trans_mat", [image_rep_size, common_size])
             image_trans_bias = tf.get_variable("image_trans_bias", [1, common_size])
@@ -64,14 +65,15 @@ class Model(object):
             # input sent embedding
             x_batch = tf.nn.embedding_lookup(emb_mat, input_sent_batch, "emb")  # [N, d]
 
-            with tf.name_scope('rnn'):
+            with tf.variable_scope('rnn', reuse=mode=='test') as scope:
                 single_cell = rnn_cell.BasicLSTMCell(rnn_hidden_size, forget_bias=0.0)
                 cell = rnn_cell.MultiRNNCell([single_cell] * rnn_num_layers)
                 init_hidden_state = cell.zero_state(batch_size, tf.float32)
                 x_split_batch = [tf.squeeze(x_each_batch, [1])
                                  for x_each_batch in tf.split(1, max_sent_size, x_batch)]
+                if mode == 'test': shared_scope.reuse_variables()
                 o_split_batch, h_last_batch = rnn.rnn(cell, x_split_batch, init_hidden_state,
-                                                      sequence_length=input_len_batch, scope=shared_scope)
+                                                      sequence_length=input_len_batch, scope=scope)
 
             with tf.name_scope('trans'):
                 m_batch = tf.tanh(tf.matmul(input_image_rep_batch, image_trans_mat) + image_trans_bias, 'image_trans')
@@ -88,6 +90,7 @@ class Model(object):
                 total_loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
                 losses = tf.get_collection('losses')
                 ema = tf.train.ExponentialMovingAverage(0.9, name='ema')
+                ema_op = ema.apply(losses + [total_loss])
                 summaries.append(tf.scalar_summary(total_loss.op.name, total_loss))
                 summaries.append(tf.scalar_summary(total_loss.op.name + '(moving)', ema.average(total_loss)))
 
@@ -97,7 +100,7 @@ class Model(object):
                     # with tf.control_dependencies([loss_averages_op]):
                     # opt = tf.train.GradientDescentOptimizer(learning_rate)
                     opt = tf.train.AdagradOptimizer(learning_rate)
-                    grads_and_vars = opt.compute_gradients(losses)
+                    grads_and_vars = opt.compute_gradients(total_loss)
                     # clipped_grads_and_vars = [(tf.clip_by_norm(grad, params.max_grad_norm), var) for grad, var in grads_and_vars]
                     opt_op = opt.apply_gradients(grads_and_vars, global_step=global_step)
 
@@ -131,8 +134,10 @@ class Model(object):
             tensors.input_image_batch = input_image_rep_batch
             tensors.input_len_batch = input_len_batch
             tensors.target_batch = target_batch
-            tensors.avg_loss = avg_loss
+            tensors.total_loss = total_loss
             tensors.merged_summary = merged_summary
+
+        return tensors
 
     def _get_feed_dict(self, tensors, image_rep_batch, sent_batch, len_batch, target_batch=None):
         feed_dict = {tensors.input_image_batch: image_rep_batch,
@@ -202,25 +207,25 @@ class Model(object):
 
         pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.ETA()], maxval=num_batches).start()
         num_corrects = 0
-        total_avg_loss = 0
+        total_total_loss = 0
         for num_batches_completed in xrange(num_batches):
             image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = test_data_set.get_next_labeled_batch()
             for image_rep, mc_sent, mc_len, mc_label in zip(image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch):
                 mc_image_rep = np.tile(image_rep, [len(mc_sent), 1])
                 mc_target = np.array([[0, 1] if label else [1, 0] for label in mc_label])
                 feed_dict = self._get_feed_dict(tensors, mc_image_rep, mc_sent, mc_len, mc_target)
-                correct, each_avg_loss, summary_str, global_step \
-                    = sess.run([tensors.correct, tensors.avg_loss, tensors.merged_summary, self.global_step], feed_dict=feed_dict)
+                correct, each_total_loss, summary_str, global_step \
+                    = sess.run([tensors.correct, tensors.total_loss, tensors.merged_summary, self.global_step], feed_dict=feed_dict)
                 num_corrects += correct
-                total_avg_loss += each_avg_loss
+                total_total_loss += each_total_loss
             pbar.update(num_batches_completed)
         pbar.finish()
         test_data_set.reset()
         total = num_batches * test_data_set.batch_size
         acc = float(num_corrects)/total
-        avg_loss = total_avg_loss/total
+        total_loss = total_total_loss/total
         self.writer.add_summary(summary_str, self.global_step)
-        print "%d/%d = %.4f, loss=%.4f" % (num_corrects, total, acc, avg_loss)
+        print "%d/%d = %.4f, loss=%.4f" % (num_corrects, total, acc, total_loss)
 
     def save(self, sess):
         print "saving model ..."
