@@ -82,16 +82,18 @@ class Model(object):
             logit_batch = tf.matmul(s_batch * m_batch, class_mat, name='logit')
 
             with tf.name_scope('loss'):
-                losses = tf.nn.softmax_cross_entropy_with_logits(logit_batch, tf.cast(target_batch, 'float'))
-                total_loss = tf.add_n(losses, name='total_loss')
-                avg_loss = tf.reduce_mean(losses, name='avg_loss')
+                cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logit_batch, tf.cast(target_batch, 'float'), name='cross_entropy')
+                avg_cross_entropy = tf.reduce_mean(cross_entropy, name='avg_cross_entropy')
+                tf.add_to_collection('losses', avg_cross_entropy)
+                total_loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
+                losses = tf.get_collection('losses')
                 ema = tf.train.ExponentialMovingAverage(0.9, name='ema')
-                summaries.append(tf.scalar_summary(avg_loss.op.name, avg_loss))
-                summaries.append(tf.scalar_summary(avg_loss.op.name + '(moving)', ema.average(avg_loss)))
+                summaries.append(tf.scalar_summary(total_loss.op.name, total_loss))
+                summaries.append(tf.scalar_summary(total_loss.op.name + '(moving)', ema.average(total_loss)))
 
             if mode == 'train':
                 with tf.name_scope('opt'):
-                    loss_averages_op = ema.apply(losses + [total_loss])
+                    # loss_averages_op = ema.apply(losses + [total_loss])
                     # with tf.control_dependencies([loss_averages_op]):
                     # opt = tf.train.GradientDescentOptimizer(learning_rate)
                     opt = tf.train.AdagradOptimizer(learning_rate)
