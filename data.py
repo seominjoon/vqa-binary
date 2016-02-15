@@ -5,7 +5,7 @@ import json
 
 
 class DataSet(object):
-    def __init__(self, batch_size, idxs, image_rep_ds, image_idxs, sent_ds, lens, labels=None, include_leftover=False):
+    def __init__(self, batch_size, idxs, image_rep_ds, image_idxs, sent_ds, lens, labels=None, include_leftover=False, name=""):
         """
 
         :param config:
@@ -30,6 +30,7 @@ class DataSet(object):
         self.num_examples = len(idxs)
         self.num_batches = self.num_examples / self.batch_size + int(include_leftover)
         self.include_leftover = include_leftover
+        self.name = name
         self.reset()
 
 
@@ -60,7 +61,7 @@ class DataSet(object):
         self.idx_in_epoch = 0
         np.random.shuffle(self.idxs)
 
-def read_vqa(batch_size, image_rep_h5_path, image_idx_path, sent_h5_path, len_path, labels_path=None):
+def read_vqa(batch_size, image_rep_h5_path, image_idx_path, sent_h5_path, len_path, labels_path=None, name=""):
     image_rep_h5 = h5py.File(image_rep_h5_path, 'r')
     image_rep_ds = image_rep_h5['data']
     sent_h5 = h5py.File(sent_h5_path, 'r')
@@ -72,6 +73,6 @@ def read_vqa(batch_size, image_rep_h5_path, image_idx_path, sent_h5_path, len_pa
     else:
         labels = None
     idxs = range(len(labels))
-    data_set = DataSet(batch_size, idxs, image_rep_ds, image_idxs, sent_ds, lens, labels=labels)
+    data_set = DataSet(batch_size, idxs, image_rep_ds, image_idxs, sent_ds, lens, labels=labels, name=name)
     return data_set
 

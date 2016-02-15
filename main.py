@@ -24,8 +24,7 @@ flags.DEFINE_string("vocab_dict", "val/vocab_dict.json", "vocab_dict.json file p
 
 # training parameters
 flags.DEFINE_integer("num_epochs", 100, "Total number of epochs [100]")
-flags.DEFINE_integer("train_batch_size", 100, "Batch size during training [100]")
-flags.DEFINE_integer("val_batch_size", 100, "Batch size during validation [100]")
+flags.DEFINE_integer("batch_size", 100, "Batch size [100]")
 flags.DEFINE_integer("rnn_num_layers", 3, "Number of RNN (LSTM) layers [3]")
 flags.DEFINE_integer("rnn_hidden_size", 512, "Hidden size of RNN (LSTM) [512]")
 flags.DEFINE_integer("common_size", 1024, "Common size [1024]")
@@ -33,7 +32,8 @@ flags.DEFINE_float("learning_rate", 1e-2, "Learning rate [0.01]")
 flags.DEFINE_float("max_grad_norm", 40, "Max gradient norm during trainig [40]")
 
 # training and testing options
-flags.DEFINE_boolean("is_train", False, "Train? [False]")
+flags.DEFINE_boolean("train", False, "Train? [False]")
+flags.DEFINE_boolean("test", True, "Test? [True]")
 flags.DEFINE_integer("eval_period", 3, "Evaluation period [3]")
 flags.DEFINE_integer("eval_num_batches", 50, "Number of batches to evaluate during training [50]")
 flags.DEFINE_integer("save_period", 1, "Save period [1]")
@@ -50,12 +50,13 @@ def main(_):
     FLAGS.vocab_size = len(vocab_dict)
     pprint(FLAGS.__dict__)
 
-    train_data_set = read_vqa(FLAGS.train_batch_size, FLAGS.train_image_rep_h5, FLAGS.train_image_idx,
-                              FLAGS.train_sent_h5, FLAGS.train_len, FLAGS.train_label)
+    train_data_set = read_vqa(FLAGS.batch_size, FLAGS.train_image_rep_h5, FLAGS.train_image_idx,
+                              FLAGS.train_sent_h5, FLAGS.train_len, FLAGS.train_label, name='train')
     FLAGS.image_rep_size = train_data_set.image_rep_size
     FLAGS.max_sent_size = train_data_set.max_sent_size
     FLAGS.num_mcs = train_data_set.num_mcs
-    val_data_set = read_vqa(FLAGS.val_batch_size, FLAGS.val_image_rep_h5, FLAGS.val_image_idx, FLAGS.val_sent_h5, FLAGS.val_len, FLAGS.val_label)
+    val_data_set = read_vqa(FLAGS.batch_size, FLAGS.val_image_rep_h5, FLAGS.val_image_idx,
+                            FLAGS.val_sent_h5, FLAGS.val_len, FLAGS.val_label, name='test')
 
     if not os.path.exists(FLAGS.save_dir):
         os.mkdir(FLAGS.save_dir)
@@ -78,12 +79,9 @@ def main(_):
         else:
             model.load(sess)
 
-        print "-" * 80
         print "training complete."
-        print "testing %d examples (train data) ..." % train_data_set.num_examples
+        print "-" * 80
         model.test(sess, train_data_set, num_batches=FLAGS.train_num_batches)
-
-        print "testing %d examples (val data) ..." % val_data_set.num_examples
         model.test(sess, val_data_set, num_batches=FLAGS.val_num_batches)
 
 if __name__ == "__main__":
