@@ -16,7 +16,7 @@ class BaseModel(object):
         self.initializer = tf.random_normal_initializer(0, 0.1)
         with tf_graph.as_default(), tf.variable_scope(self.name, initializer=self.initializer):
             print("building %s graph ..." % self.name)
-            self.global_step = tf.get_variable('global_step', initializer=tf.constant_initializer(0), trainable=False)
+            self.global_step = tf.get_variable('global_step', shape=[], initializer=tf.constant_initializer(0), trainable=False)
             self._build_tower()
             self.saver = tf.train.Saver()
 
