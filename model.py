@@ -9,7 +9,7 @@ from data import DataSet
 
 
 class Model(object):
-    def __init__(self, tf_graph, params, writer, name=None):
+    def __init__(self, tf_graph, params, log_dir="log", name=None):
         self.tf_graph = tf_graph
         self.params = params
         self.save_dir = params.save_dir
@@ -17,7 +17,7 @@ class Model(object):
         with tf_graph.as_default():
             self._build_tf_graph()
             self.saver = tf.train.Saver()
-            self.writer = tf.train.SummaryWriter(params.log_dir, tf_graph.as_graph_def())
+            self.writer = tf.train.SummaryWriter(log_dir, tf_graph.as_graph_def())
 
 
     def _build_tf_graph(self):
@@ -58,39 +58,41 @@ class Model(object):
                 x_split_batch = [tf.squeeze(x_each_batch, [1])
                                  for x_each_batch in tf.split(1, max_sent_size, x_batch)]
                 o_split_batch, h_last_batch = rnn.rnn(cell, x_split_batch, init_hidden_state,
-                                                      sequence_length=input_len_batch, scope=scope)
+                                                      sequence_length=input_len_batch)
 
             with tf.variable_scope('trans'):
-                image_trans_mat = tf.get_variable("image_trans_mat", [image_rep_size, common_size])
-                image_trans_bias = tf.get_variable("image_trans_bias", [1, common_size])
+                image_trans_mat = tf.get_variable("image_trans_mat", [image_rep_size, rnn_hidden_size])
+                image_trans_bias = tf.get_variable("image_trans_bias", [1, rnn_hidden_size])
+                """
                 sent_trans_mat = tf.get_variable("sent_trans_mat", [rnn_hidden_size, common_size])
                 sent_trans_bias = tf.get_variable("sent_trans_bias", [1, common_size])
+                """
                 m_batch = tf.tanh(tf.matmul(input_image_rep_batch, image_trans_mat) + image_trans_bias, 'image_trans')
                 sent_rep_batch = tf.split(1, 2*rnn_num_layers, h_last_batch)[2*rnn_num_layers-1]
-                s_batch = tf.tanh(tf.matmul(sent_rep_batch, sent_trans_mat) + sent_trans_bias, 'sent_trans')
+                # s_batch = tf.tanh(tf.matmul(sent_rep_batch, sent_trans_mat) + sent_trans_bias, 'sent_trans')
 
             # concatenate sent emb and image rep
             with tf.variable_scope("class"):
-                class_mat = tf.get_variable("class_mat", [common_size, 2])
-                logit_batch = tf.matmul(s_batch * m_batch, class_mat, name='logit')
+                class_mat = tf.get_variable("class_mat", [rnn_hidden_size, 2])
+                logit_batch = tf.matmul(sent_rep_batch * m_batch, class_mat, name='logit')
 
             with tf.name_scope('loss'):
                 cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logit_batch, tf.cast(target_batch, 'float'), name='cross_entropy')
-                avg_cross_entropy = tf.reduce_mean(cross_entropy, name='avg_cross_entropy')
+                avg_cross_entropy = tf.reduce_mean(cross_entropy, 0, name='avg_cross_entropy')
                 tf.add_to_collection('losses', avg_cross_entropy)
                 total_loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
                 losses = tf.get_collection('losses')
-                ema = tf.train.ExponentialMovingAverage(0.9, name='ema')
-                ema_op = ema.apply(losses + [total_loss])
-                summaries.append(tf.scalar_summary(total_loss.op.name, total_loss))
-                summaries.append(tf.scalar_summary(total_loss.op.name + '(moving)', ema.average(total_loss)))
+                # ema = tf.train.ExponentialMovingAverage(0.9, name='ema')
+                # ema_op = ema.apply(losses + [total_loss])
+                summaries.append(tf.scalar_summary(avg_cross_entropy.op.name, avg_cross_entropy))
+                # summaries.append(tf.scalar_summary(total_loss.op.name + '(moving)', ema.average(total_loss)))
 
             with tf.name_scope('opt'):
                 # loss_averages_op = ema.apply(losses + [total_loss])
                 # with tf.control_dependencies([loss_averages_op]):
-                # opt = tf.train.GradientDescentOptimizer(learning_rate)
-                opt = tf.train.AdagradOptimizer(learning_rate)
-                grads_and_vars = opt.compute_gradients(total_loss)
+                opt = tf.train.GradientDescentOptimizer(learning_rate)
+                # opt = tf.train.AdagradOptimizer(learning_rate)
+                grads_and_vars = opt.compute_gradients(cross_entropy)
                 # clipped_grads_and_vars = [(tf.clip_by_norm(grad, params.max_grad_norm), var) for grad, var in grads_and_vars]
                 opt_op = opt.apply_gradients(grads_and_vars, global_step=global_step)
 
@@ -126,7 +128,8 @@ class Model(object):
         sent_batch, len_batch, target_batch = np.zeros([batch_size, max_sent_size]), np.zeros([batch_size]), np.zeros([batch_size, 2])
         for i, (mc_sent, mc_len, mc_label) in enumerate(zip(mc_sent_batch, mc_len_batch, mc_label_batch)):
             correct_idx = np.argmax(mc_label)
-            if np.random.randint(2) > 0:
+            val = np.random.randint(2)
+            if val > 0.5:
                 sent, len_, label = mc_sent[correct_idx], mc_len[correct_idx], mc_label[correct_idx]
             else:
                 delta_idx = np.random.randint(params.num_mcs-1) + 1
@@ -136,7 +139,7 @@ class Model(object):
             sent_batch[i, :] = sent
             len_batch[i] = len_
             target_batch[i, :] = target
-        feed_dict = self._get_feed_dict(image_rep_batch, sent_batch, len_batch, target_batch)
+        feed_dict = self._get_feed_dict(image_rep_batch, sent_batch, len_batch, target_batch=target_batch)
         feed_dict[self.learning_rate] = learning_rate
         return sess.run([self.opt_op, self.merged_summary, self.global_step], feed_dict=feed_dict)
 
@@ -153,7 +156,7 @@ class Model(object):
             pbar.start()
             for num_batches_completed in xrange(num_batches):
                 image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = train_data_set.get_next_labeled_batch()
-                _, summary_str, global_step = self.train_batch(sess, image_rep_batch, mc_sent_batch, mc_len_batch, mc_len_batch, learning_rate)
+                _, summary_str, global_step = self.train_batch(sess, image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch, learning_rate)
                 self.writer.add_summary(summary_str, global_step)
                 pbar.update(num_batches_completed)
             pbar.finish()
@@ -166,7 +169,6 @@ class Model(object):
                 self.test(sess, val_data_set, num_batches=params.eval_num_batches)
 
             if (epoch_idx + 1) % params.save_period == 0:
-                print "saving model ..."
                 self.save(sess)
 
     def _pad(self, array, inc):
