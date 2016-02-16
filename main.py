@@ -6,6 +6,7 @@ import tensorflow as tf
 
 from data import read_vqa
 from models.binary_model import BinaryModel
+from models.multi_model import MultiModel
 
 flags = tf.app.flags
 
@@ -34,6 +35,7 @@ flags.DEFINE_integer("num_gpus", 1, "Number of GPUs [1]")
 # training and testing options
 flags.DEFINE_boolean("train", False, "Train? [False]")
 flags.DEFINE_boolean("test", True, "Test? [True]")
+flags.DEFINE_string("model", "multi", "Type of model? 'multi' or 'binary' [multi]")
 flags.DEFINE_integer("eval_period", 3, "Evaluation period [3]")
 flags.DEFINE_integer("eval_num_batches", 50, "Number of batches to evaluate during training [50]")
 flags.DEFINE_integer("save_period", 1, "Save period [1]")
@@ -72,8 +74,12 @@ def main(_):
 
     pprint(FLAGS.__dict__)
 
+    model_dict = {'binary': BinaryModel,
+                  'multi': MultiModel}
+    model_class = model_dict[FLAGS.model]
+
     tf_graph = tf.Graph()
-    model = BinaryModel(tf_graph, FLAGS)
+    model = model_class(tf_graph, FLAGS)
     with tf.Session(graph=tf_graph) as sess:
         sess.run(tf.initialize_all_variables())
         writer = tf.train.SummaryWriter(FLAGS.log_dir, sess.graph_def)
@@ -83,9 +89,11 @@ def main(_):
             model.load(sess)
 
         print("training complete.")
-        print("-" * 80)
-        model.test(sess, train_data_set, num_batches=FLAGS.train_num_batches)
-        model.test(sess, val_data_set, num_batches=FLAGS.val_num_batches)
+
+        if FLAGS.test:
+            print("-" * 80)
+            model.test(sess, train_data_set, num_batches=FLAGS.train_num_batches)
+            model.test(sess, val_data_set, num_batches=FLAGS.val_num_batches)
 
 if __name__ == "__main__":
     tf.app.run()
