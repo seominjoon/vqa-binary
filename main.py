@@ -1,11 +1,11 @@
 import json
 import os
-
-import tensorflow as tf
 from pprint import pprint
 
+import tensorflow as tf
+
 from data import read_vqa
-from model import Model
+from models.binary_model import BinaryModel
 
 flags = tf.app.flags
 
@@ -73,7 +73,7 @@ def main(_):
     pprint(FLAGS.__dict__)
 
     tf_graph = tf.Graph()
-    model = Model(tf_graph, FLAGS, name='my')
+    model = BinaryModel(tf_graph, FLAGS)
     with tf.Session(graph=tf_graph) as sess:
         sess.run(tf.initialize_all_variables())
         writer = tf.train.SummaryWriter(FLAGS.log_dir, sess.graph_def)
@@ -82,8 +82,8 @@ def main(_):
         else:
             model.load(sess)
 
-        print "training complete."
-        print "-" * 80
+        print("training complete.")
+        print("-" * 80)
         model.test(sess, train_data_set, num_batches=FLAGS.train_num_batches)
         model.test(sess, val_data_set, num_batches=FLAGS.val_num_batches)
 
