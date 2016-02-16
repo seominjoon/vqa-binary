@@ -12,9 +12,11 @@ class Model(object):
     def __init__(self, tf_graph, params, name=None):
         self.tf_graph = tf_graph
         self.params = params
+        self.save_dir = params.save_dir
         self.name = name if name else self.__class__.__name__
         with tf_graph.as_default():
             self._build_tf_graph()
+            self.saver = tf.train.Saver()
 
     def _build_tf_graph(self):
         print "building graph ..."
@@ -25,7 +27,6 @@ class Model(object):
         max_sent_size = params.max_sent_size
         image_rep_size = params.image_rep_size
         vocab_size = params.vocab_size
-        common_size = params.common_size
         batch_size = params.batch_size
         num_mcs = params.num_mcs
 
