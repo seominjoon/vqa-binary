@@ -14,10 +14,10 @@ class Model(object):
         self.params = params
         self.save_dir = params.save_dir
         self.name = name if name else self.__class__.__name__
-        self.writer = writer
         with tf_graph.as_default():
             self._build_tf_graph()
             self.saver = tf.train.Saver()
+            self.writer = tf.train.SummaryWriter(params.log_dir, tf_graph.as_graph_def())
 
 
     def _build_tf_graph(self):
@@ -191,17 +191,20 @@ class Model(object):
 
         mc_prob_batch = np.zeros([batch_size, num_mcs])
 
+        losses = []
         for mc_idx in xrange(num_mcs):
             sent_batch = mc_sent_batch[:, mc_idx]
             len_batch = mc_len_batch[:, mc_idx]
             feed_dict = self._get_feed_dict(image_rep_batch, sent_batch, len_batch)
-            logit_batch, summary_str, global_step = sess.run([self.logit_batch, self.merged_summary, self.global_step], feed_dict=feed_dict)
+            logit_batch, cur_loss, summary_str, global_step = sess.run([self.logit_batch, self.total_loss, self.merged_summary, self.global_step], feed_dict=feed_dict)
             mc_prob_batch[:, mc_idx] = logit_batch[:, 1]
+            losses.append(cur_loss)
         mc_pred_batch = np.argmax(mc_prob_batch, 1)
         mc_true_batch = np.argmax(mc_label_batch, 1)
         num_corrects = np.sum((mc_pred_batch == mc_true_batch)[:actual_batch_size])
+        loss = np.mean(losses)
 
-        return num_corrects, summary_str, global_step
+        return num_corrects, loss, summary_str, global_step
 
     def test(self, sess, test_data_set, num_batches=None):
         num_batches = num_batches if num_batches else test_data_set.num_batches
@@ -211,16 +214,20 @@ class Model(object):
         pbar = pb.ProgressBar(widgets=["epoch %d:" % (test_data_set.num_epochs_completed + 1),
                                        pb.Percentage(), pb.Bar(), pb.ETA()], maxval=num_batches)
         pbar.start()
+        losses = []
         for num_batches_completed in xrange(num_batches):
             image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = test_data_set.get_next_labeled_batch()
-            cur_num_corrects, _, global_step = self.test_batch(sess, image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch)
+            cur_num_corrects, cur_loss, _, global_step = self.test_batch(sess, image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch)
             num_corrects += cur_num_corrects
             total += len(image_rep_batch)
+            losses.append(cur_loss)
             pbar.update(num_batches_completed)
         pbar.finish()
         test_data_set.complete_epoch()
+        loss = np.mean(losses)
 
-        print "acc at %d: %.2f%% = %d / %d" % (global_step, 100 * float(num_corrects)/total, num_corrects, total)
+        print "a%d: acc = %.2f%% = %d / %d, loss = %.4f" % (global_step, 100 * float(num_corrects)/total,
+                                                            num_corrects, total, loss)
 
     def save(self, sess):
         print "saving model ..."

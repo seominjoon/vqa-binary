@@ -73,8 +73,7 @@ def main(_):
     pprint(FLAGS.__dict__)
 
     tf_graph = tf.Graph()
-    writer = tf.train.SummaryWriter(FLAGS.log_dir, tf_graph.as_graph_def())
-    model = Model(tf_graph, FLAGS, writer)
+    model = Model(tf_graph, FLAGS)
     with tf.Session(graph=tf_graph) as sess:
         sess.run(tf.initialize_all_variables())
         if FLAGS.train:
