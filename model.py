@@ -75,9 +75,9 @@ class Model(object):
             with tf.name_scope('loss'):
                 cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logit_batch, tf.cast(target_batch, 'float'), name='cross_entropy')
                 avg_cross_entropy = tf.reduce_mean(cross_entropy, 0, name='avg_cross_entropy')
-                tf.add_to_collection('losses', avg_cross_entropy)
-                total_loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
-                losses = tf.get_collection('losses')
+                # tf.add_to_collection('losses', avg_cross_entropy)
+                # total_loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
+                # losses = tf.get_collection('losses')
                 # ema = tf.train.ExponentialMovingAverage(0.9, name='ema')
                 # ema_op = ema.apply(losses + [total_loss])
                 summaries.append(tf.scalar_summary(avg_cross_entropy.op.name, avg_cross_entropy))
@@ -105,7 +105,7 @@ class Model(object):
             self.input_image_batch = input_image_rep_batch
             self.input_len_batch = input_len_batch
             self.target_batch = target_batch
-            self.total_loss = total_loss
+            self.avg_cross_entropy = avg_cross_entropy
             self.merged_summary = merged_summary
 
     def _get_feed_dict(self, image_rep_batch, sent_batch, len_batch, target_batch=None):
@@ -194,7 +194,7 @@ class Model(object):
             sent_batch = mc_sent_batch[:, mc_idx]
             len_batch = mc_len_batch[:, mc_idx]
             feed_dict = self._get_feed_dict(image_rep_batch, sent_batch, len_batch)
-            logit_batch, cur_loss, summary_str, global_step = sess.run([self.logit_batch, self.total_loss, self.merged_summary, self.global_step], feed_dict=feed_dict)
+            logit_batch, cur_loss, summary_str, global_step = sess.run([self.logit_batch, self.avg_cross_entropy, self.merged_summary, self.global_step], feed_dict=feed_dict)
             mc_prob_batch[:, mc_idx] = logit_batch[:, 1]
             losses.append(cur_loss)
         mc_pred_batch = np.argmax(mc_prob_batch, 1)
