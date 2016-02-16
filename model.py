@@ -40,9 +40,9 @@ class Model(object):
             # placeholders
             with tf.name_scope("ph"):
                 learning_rate = tf.placeholder('float', name='lr')
-                input_sent_batch = tf.placeholder(tf.int32, [batch_size, num_mcs, max_sent_size], 'sent')
-                input_image_rep_batch = tf.placeholder(tf.float32, [batch_size, num_mcs, image_rep_size], 'image_rep')
-                input_len_batch = tf.placeholder(tf.int8, [batch_size, num_mcs], 'len')
+                input_sent_batch = tf.placeholder(tf.int32, [batch_size, max_sent_size], 'sent')
+                input_image_rep_batch = tf.placeholder(tf.float32, [batch_size, image_rep_size], 'image_rep')
+                input_len_batch = tf.placeholder(tf.int8, [batch_size], 'len')
                 target_batch = tf.placeholder(tf.int32, [batch_size, 2], 'target')
 
             # input sent embedding
@@ -111,11 +111,12 @@ class Model(object):
             self.merged_summary = merged_summary
 
     def _get_feed_dict(self, image_rep_batch, sent_batch, len_batch, target_batch=None):
+        if target_batch is None:
+            target_batch = np.zeros([image_rep_batch.shape[0], 2])
         feed_dict = {self.input_image_batch: image_rep_batch,
                      self.input_sent_batch: sent_batch,
-                     self.input_len_batch: len_batch}
-        if target_batch is not None:
-            feed_dict[self.target_batch] = target_batch
+                     self.input_len_batch: len_batch,
+                     self.target_batch: target_batch}
         return feed_dict
 
     def train_batch(self, sess, image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch, learning_rate):
@@ -180,15 +181,13 @@ class Model(object):
         batch_size = params.batch_size
         num_mcs = params.num_mcs
 
-        if image_rep_batch.shape[0] < batch_size:
-            early_stop = image_rep_batch.shape[0]
-            diff = batch_size - image_rep_batch.shape[0]
+        actual_batch_size = image_rep_batch.shape[0]
+        if actual_batch_size < batch_size:
+            diff = batch_size - actual_batch_size
             image_rep_batch = self._pad(image_rep_batch, diff)
             mc_sent_batch = self._pad(mc_sent_batch, diff)
             mc_len_batch = self._pad(mc_len_batch, diff)
             mc_label_batch = self._pad(mc_label_batch, diff)
-        else:
-            early_stop = None
 
         mc_prob_batch = np.zeros([batch_size, num_mcs])
 
@@ -200,26 +199,24 @@ class Model(object):
             mc_prob_batch[:, mc_idx] = logit_batch[:, 1]
         mc_pred_batch = np.argmax(mc_prob_batch, 1)
         mc_true_batch = np.argmax(mc_label_batch, 1)
-        if early_stop:
-            mc_pred_batch = mc_pred_batch[:early_stop]
-            mc_true_batch = mc_pred_batch[:early_stop]
-        num_corrects = np.sum(mc_pred_batch, mc_true_batch)
+        num_corrects = np.sum((mc_pred_batch == mc_true_batch)[:actual_batch_size])
 
         return num_corrects, summary_str, global_step
 
     def test(self, sess, test_data_set, num_batches=None):
         num_batches = num_batches if num_batches else test_data_set.num_batches
         num_corrects, total = 0, 0
-        print "testing %d batches x %d examples (%s)... (last batch might contain less examples)" % \
+        print "testing %d batches x %d examples (%s) ..." % \
               (num_batches, test_data_set.batch_size, test_data_set.name)
         pbar = pb.ProgressBar(widgets=["epoch %d:" % (test_data_set.num_epochs_completed + 1),
                                        pb.Percentage(), pb.Bar(), pb.ETA()], maxval=num_batches)
-        for num_batches_completed in num_batches:
+        pbar.start()
+        for num_batches_completed in xrange(num_batches):
             image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = test_data_set.get_next_labeled_batch()
             cur_num_corrects, _, global_step = self.test_batch(sess, image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch)
             num_corrects += cur_num_corrects
             total += len(image_rep_batch)
-            pbar.update(num_batches_completed + 1)
+            pbar.update(num_batches_completed)
         pbar.finish()
         test_data_set.complete_epoch()
 

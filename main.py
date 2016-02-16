@@ -48,7 +48,6 @@ FLAGS = flags.FLAGS
 def main(_):
     vocab_dict = json.load(open(FLAGS.vocab_dict, 'rb'))
     FLAGS.vocab_size = len(vocab_dict)
-    pprint(FLAGS.__dict__)
 
     train_data_set = read_vqa(FLAGS.batch_size, FLAGS.train_image_rep_h5, FLAGS.train_image_idx,
                               FLAGS.train_sent_h5, FLAGS.train_len, FLAGS.train_label, name='train')
@@ -69,12 +68,14 @@ def main(_):
         FLAGS.num_epochs = 5
         FLAGS.eval_period = 1
 
+    pprint(FLAGS.__dict__)
+
     tf_graph = tf.Graph()
     writer = tf.train.SummaryWriter(FLAGS.log_dir, tf_graph.as_graph_def())
     model = Model(tf_graph, FLAGS, writer)
     with tf.Session(graph=tf_graph) as sess:
         sess.run(tf.initialize_all_variables())
-        if FLAGS.is_train:
+        if FLAGS.train:
             model.train(sess, train_data_set, FLAGS.learning_rate, val_data_set=val_data_set)
         else:
             model.load(sess)
