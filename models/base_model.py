@@ -38,7 +38,7 @@ class BaseModel(object):
 
         print("training %d epochs ..." % params.num_epochs)
         for epoch_idx in xrange(params.num_epochs):
-            pbar = pb.ProgressBar(widgets=["epoch %d:" % (train_data_set.num_epochs_completed + 1),
+            pbar = pb.ProgressBar(widgets=["epoch %d|" % (train_data_set.num_epochs_completed + 1),
                                            pb.Percentage(), pb.Bar(), pb.ETA()], maxval=num_batches)
             pbar.start()
             for num_batches_completed in xrange(num_batches):
@@ -50,9 +50,9 @@ class BaseModel(object):
             train_data_set.complete_epoch()
 
             if val_data_set and (epoch_idx + 1) % params.eval_period == 0:
-                print("evaluating %d x %d examples (train data) ..." % (params.eval_num_batches, batch_size))
+                print("evaluating on train data ...")
                 self.test(sess, train_data_set, num_batches=params.eval_num_batches)
-                print("evaluating %d x %d examples (val data) ..." % (params.eval_num_batches, batch_size))
+                print("evaluating on test data ...")
                 self.test(sess, val_data_set, num_batches=params.eval_num_batches)
 
             if (epoch_idx + 1) % params.save_period == 0:
@@ -68,9 +68,8 @@ class BaseModel(object):
     def test(self, sess, test_data_set, num_batches=None):
         num_batches = num_batches if num_batches else test_data_set.num_batches
         num_corrects, total = 0, 0
-        print("testing %d batches x %d examples (%s) ..." % \
-              (num_batches, test_data_set.batch_size, test_data_set.name))
-        pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.ETA()], maxval=num_batches)
+        string = "N=%d|" % test_data_set.batch_size * num_batches
+        pbar = pb.ProgressBar(widgets=[string, pb.Percentage(), pb.Bar(), pb.ETA()], maxval=num_batches)
         pbar.start()
         losses = []
         for num_batches_completed in xrange(num_batches):

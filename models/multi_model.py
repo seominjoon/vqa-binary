@@ -16,7 +16,7 @@ class MultiModel(BaseModel):
         image_rep_size = params.image_rep_size  # I
         vocab_size = params.vocab_size  # V
         batch_size = params.batch_size  # B
-        num_mcs = params.num_cs  # C
+        num_mcs = params.num_mcs  # C
 
         # placeholders
         self.learning_rate = tf.placeholder('float', name='lr')
@@ -36,7 +36,7 @@ class MultiModel(BaseModel):
         with tf.variable_scope('rnn') as scope:
             single_cell = rnn_cell.BasicLSTMCell(rnn_hidden_size, forget_bias=0.0)
             cell = rnn_cell.MultiRNNCell([single_cell] * rnn_num_layers)
-            init_hidden_state = cell.zero_state(batch_size, tf.float32)
+            init_hidden_state = cell.zero_state(batch_size * num_mcs, tf.float32)
 
             flat_x_batch = tf.reshape(x_batch, [batch_size * num_mcs, max_sent_size, rnn_hidden_size])
             flat_len_batch = tf.reshape(self.mc_len_batch, [batch_size * num_mcs])
@@ -59,7 +59,7 @@ class MultiModel(BaseModel):
             m_batch = tf.tanh(tf.matmul(self.image_rep_batch, image_trans_mat) + image_trans_bias, name='m')  # [B, d]
             aug_m_batch = tf.expand_dims(m_batch, 2, name='aug_m')  # [B, d, 1]
             # s_batch = tf.tanh(tf.matmul(sent_rep_batch, sent_trans_mat) + sent_trans_bias, 'sent_trans')
-            logit_batch = tf.squeeze(tf.batch_matmul(mc_s_batch, aug_m_batch), 2, name='logit')  # [B, C]
+            logit_batch = tf.squeeze(tf.batch_matmul(mc_s_batch, aug_m_batch), [2], name='logit')  # [B, C]
             p_batch = tf.nn.softmax(logit_batch, 'p')
 
         with tf.name_scope('loss') as loss_scope:
