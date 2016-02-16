@@ -14,12 +14,13 @@ class Model(object):
         self.params = params
         self.save_dir = params.save_dir
         self.name = name if name else self.__class__.__name__
-        with tf_graph.as_default():
-            self._build_tf_graph()
+        self.initializer = tf.random_normal_initializer(0, 0.1)
+        with tf_graph.as_default(), tf.variable_scope(self.name, initializer=self.initializer):
+            print "building graph ..."
+            self._build_tower()
             self.saver = tf.train.Saver()
 
-    def _build_tf_graph(self):
-        print "building graph ..."
+    def _build_tower(self):
         # Params
         params = self.params
         rnn_num_layers = params.rnn_num_layers
@@ -28,86 +29,90 @@ class Model(object):
         image_rep_size = params.image_rep_size
         vocab_size = params.vocab_size
         batch_size = params.batch_size
-        num_mcs = params.num_mcs
 
-        with tf.variable_scope(self.name) as model_scope:
-            global_step = tf.Variable(0, name='global_step', trainable=False)
-            summaries = []
+        global_step = tf.get_variable('global_step', initializer=tf.constant_initializer(0), trainable=False)
+        summaries = []
 
-            # placeholders
-            with tf.name_scope("ph"):
-                learning_rate = tf.placeholder('float', name='lr')
-                input_sent_batch = tf.placeholder(tf.int32, [batch_size, max_sent_size], 'sent')
-                input_image_rep_batch = tf.placeholder(tf.float32, [batch_size, image_rep_size], 'image_rep')
-                input_len_batch = tf.placeholder(tf.int8, [batch_size], 'len')
-                target_batch = tf.placeholder(tf.int32, [batch_size, 2], 'target')
+        # placeholders
+        with tf.name_scope("ph"):
+            learning_rate = tf.placeholder('float', name='lr')
+            input_sent_batch = tf.placeholder(tf.int32, [batch_size, max_sent_size], 'sent')
+            input_image_rep_batch = tf.placeholder(tf.float32, [batch_size, image_rep_size], 'image_rep')
+            input_len_batch = tf.placeholder(tf.int8, [batch_size], 'len')
+            target_batch = tf.placeholder(tf.int32, [batch_size, 2], 'target')
 
-            # input sent embedding
-            with tf.variable_scope("emb"):
-                with tf.device("/cpu:0"):
-                    emb_mat = tf.get_variable("emb_mat", [vocab_size, rnn_hidden_size])
-                x_batch = tf.nn.embedding_lookup(emb_mat, input_sent_batch, "emb")  # [N, d]
+        # input sent embedding
+        with tf.variable_scope("emb"):
+            with tf.device("/cpu:0"):
+                emb_mat = tf.get_variable("emb_mat", [vocab_size, rnn_hidden_size])
+            x_batch = tf.nn.embedding_lookup(emb_mat, input_sent_batch, "emb")  # [N, d]
 
-            with tf.variable_scope('rnn') as scope:
-                single_cell = rnn_cell.BasicLSTMCell(rnn_hidden_size, forget_bias=0.0)
-                cell = rnn_cell.MultiRNNCell([single_cell] * rnn_num_layers)
-                init_hidden_state = cell.zero_state(batch_size, tf.float32)
-                x_split_batch = [tf.squeeze(x_each_batch, [1])
-                                 for x_each_batch in tf.split(1, max_sent_size, x_batch)]
-                o_split_batch, h_last_batch = rnn.rnn(cell, x_split_batch, init_hidden_state,
-                                                      sequence_length=input_len_batch)
+        with tf.variable_scope('rnn') as scope:
+            single_cell = rnn_cell.BasicLSTMCell(rnn_hidden_size, forget_bias=0.0)
+            cell = rnn_cell.MultiRNNCell([single_cell] * rnn_num_layers)
+            init_hidden_state = cell.zero_state(batch_size, tf.float32)
+            x_split_batch = [tf.squeeze(x_each_batch, [1])
+                             for x_each_batch in tf.split(1, max_sent_size, x_batch)]
+            o_split_batch, h_last_batch = rnn.rnn(cell, x_split_batch, init_hidden_state,
+                                                  sequence_length=input_len_batch, scope=scope)
 
-            with tf.variable_scope('trans'):
-                image_trans_mat = tf.get_variable("image_trans_mat", [image_rep_size, rnn_hidden_size])
-                image_trans_bias = tf.get_variable("image_trans_bias", [1, rnn_hidden_size])
-                """
-                sent_trans_mat = tf.get_variable("sent_trans_mat", [rnn_hidden_size, common_size])
-                sent_trans_bias = tf.get_variable("sent_trans_bias", [1, common_size])
-                """
-                m_batch = tf.tanh(tf.matmul(input_image_rep_batch, image_trans_mat) + image_trans_bias, 'image_trans')
-                sent_rep_batch = tf.split(1, 2*rnn_num_layers, h_last_batch)[2*rnn_num_layers-1]
-                # s_batch = tf.tanh(tf.matmul(sent_rep_batch, sent_trans_mat) + sent_trans_bias, 'sent_trans')
+        with tf.variable_scope('trans'):
+            image_trans_mat = tf.get_variable("image_trans_mat", [image_rep_size, rnn_hidden_size])
+            image_trans_bias = tf.get_variable("image_trans_bias", [1, rnn_hidden_size])
+            """
+            sent_trans_mat = tf.get_variable("sent_trans_mat", [rnn_hidden_size, common_size])
+            sent_trans_bias = tf.get_variable("sent_trans_bias", [1, common_size])
+            """
+            m_batch = tf.tanh(tf.matmul(input_image_rep_batch, image_trans_mat) + image_trans_bias, 'image_trans')
+            sent_rep_batch = tf.split(1, 2*rnn_num_layers, h_last_batch)[2*rnn_num_layers-1]
+            # s_batch = tf.tanh(tf.matmul(sent_rep_batch, sent_trans_mat) + sent_trans_bias, 'sent_trans')
 
-            # concatenate sent emb and image rep
-            with tf.variable_scope("class"):
-                class_mat = tf.get_variable("class_mat", [rnn_hidden_size, 2])
-                logit_batch = tf.matmul(sent_rep_batch * m_batch, class_mat, name='logit')
+        # concatenate sent emb and image rep
+        with tf.variable_scope("class"):
+            class_mat = tf.get_variable("class_mat", [rnn_hidden_size, 2])
+            logit_batch = tf.matmul(sent_rep_batch * m_batch, class_mat, name='logit')
 
-            with tf.name_scope('loss'):
-                cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logit_batch, tf.cast(target_batch, 'float'), name='cross_entropy')
-                avg_cross_entropy = tf.reduce_mean(cross_entropy, 0, name='avg_cross_entropy')
-                # tf.add_to_collection('losses', avg_cross_entropy)
-                # total_loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
-                # losses = tf.get_collection('losses')
-                # ema = tf.train.ExponentialMovingAverage(0.9, name='ema')
-                # ema_op = ema.apply(losses + [total_loss])
-                summaries.append(tf.scalar_summary(avg_cross_entropy.op.name, avg_cross_entropy))
-                # summaries.append(tf.scalar_summary(total_loss.op.name + '(moving)', ema.average(total_loss)))
+        with tf.name_scope('loss') as loss_scope:
+            cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logit_batch, tf.cast(target_batch, 'float'), name='cross_entropy')
+            avg_cross_entropy = tf.reduce_mean(cross_entropy, 0, name='avg_cross_entropy')
+            tf.add_to_collection('losses', avg_cross_entropy)
+            total_loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
+            losses = tf.get_collection('losses', loss_scope)
+            ema = tf.train.ExponentialMovingAverage(0.9, name='ema')
+            ema_op = ema.apply(losses + [total_loss])
 
-            with tf.name_scope('opt'):
-                # loss_averages_op = ema.apply(losses + [total_loss])
-                # with tf.control_dependencies([loss_averages_op]):
-                opt = tf.train.GradientDescentOptimizer(learning_rate)
-                # opt = tf.train.AdagradOptimizer(learning_rate)
-                grads_and_vars = opt.compute_gradients(cross_entropy)
-                # clipped_grads_and_vars = [(tf.clip_by_norm(grad, params.max_grad_norm), var) for grad, var in grads_and_vars]
-                opt_op = opt.apply_gradients(grads_and_vars, global_step=global_step)
+        with tf.name_scope('opt'):
+            opt = tf.train.GradientDescentOptimizer(learning_rate)
+            # loss_averages_op = ema.apply(losses + [total_loss])
+            # with tf.control_dependencies([loss_averages_op]):
+            # opt = tf.train.AdagradOptimizer(learning_rate)
+            grads_and_vars = opt.compute_gradients(total_loss)
+            # clipped_grads_and_vars = [(tf.clip_by_norm(grad, params.max_grad_norm), var) for grad, var in grads_and_vars]
+            opt_op = opt.apply_gradients(grads_and_vars, global_step=global_step)
 
-            merged_summary = tf.merge_summary(summaries)
+        # summaries
+        summaries.append(tf.scalar_summary("%s (raw)" % total_loss.op.name, total_loss))
+        summaries.append(tf.scalar_summary(total_loss.op.name, ema.average(total_loss)))
+        for grad, var in grads_and_vars:
+            if grad: summaries.append(tf.histogram_summary("%s/grad" % var.op.name, grad))
+        for var in tf.trainable_variables():
+            summaries.append(tf.histogram_summary(var.op.name, var))
 
-            # Storing variables
-            self.global_step = global_step
+        merged_summary = tf.merge_summary(summaries)
 
-            # Storing tensors
-            self.opt_op = opt_op
-            self.learning_rate = learning_rate
-            self.logit_batch = logit_batch
-            self.input_sent_batch = input_sent_batch
-            self.input_image_batch = input_image_rep_batch
-            self.input_len_batch = input_len_batch
-            self.target_batch = target_batch
-            self.avg_cross_entropy = avg_cross_entropy
-            self.merged_summary = merged_summary
+        # Storing variables
+        self.global_step = global_step
+
+        # Storing tensors
+        self.opt_op = opt_op
+        self.learning_rate = learning_rate
+        self.logit_batch = logit_batch
+        self.input_sent_batch = input_sent_batch
+        self.input_image_batch = input_image_rep_batch
+        self.input_len_batch = input_len_batch
+        self.target_batch = target_batch
+        self.avg_cross_entropy = avg_cross_entropy
+        self.merged_summary = merged_summary
 
     def _get_feed_dict(self, image_rep_batch, sent_batch, len_batch, target_batch=None):
         if target_batch is None:

@@ -29,6 +29,7 @@ flags.DEFINE_integer("rnn_num_layers", 3, "Number of RNN (LSTM) layers [3]")
 flags.DEFINE_integer("rnn_hidden_size", 300, "Hidden size of RNN (LSTM) [300]")
 flags.DEFINE_float("learning_rate", 0.01, "Learning rate [0.01]")
 flags.DEFINE_float("max_grad_norm", 40, "Max gradient norm during trainig [40]")
+flags.DEFINE_integer("num_gpus", 1, "Number of GPUs [1]")
 
 # training and testing options
 flags.DEFINE_boolean("train", False, "Train? [False]")
