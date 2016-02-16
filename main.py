@@ -34,6 +34,7 @@ flags.DEFINE_integer("num_gpus", 1, "Number of GPUs [1]")
 
 # training and testing options
 flags.DEFINE_boolean("train", False, "Train? [False]")
+flags.DEFINE_boolean("load", False, "Load from last stop? [False]")
 flags.DEFINE_boolean("test", True, "Test? [True]")
 flags.DEFINE_string("model", "multi", "Type of model? 'multi' or 'binary' [multi]")
 flags.DEFINE_integer("eval_period", 3, "Evaluation period [3]")
@@ -84,6 +85,8 @@ def main(_):
         sess.run(tf.initialize_all_variables())
         writer = tf.train.SummaryWriter(FLAGS.log_dir, sess.graph_def)
         if FLAGS.train:
+            if FLAGS.load:
+                model.load(sess)
             model.train(sess, writer, train_data_set, FLAGS.learning_rate, val_data_set=val_data_set)
         else:
             model.load(sess)

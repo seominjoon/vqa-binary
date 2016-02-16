@@ -68,7 +68,7 @@ class BaseModel(object):
     def test(self, sess, test_data_set, num_batches=None):
         num_batches = num_batches if num_batches else test_data_set.num_batches
         num_corrects, total = 0, 0
-        string = "N=%d|" % test_data_set.batch_size * num_batches
+        string = "N=%d|" % (test_data_set.batch_size * num_batches)
         pbar = pb.ProgressBar(widgets=[string, pb.Percentage(), pb.Bar(), pb.ETA()], maxval=num_batches)
         pbar.start()
         losses = []
@@ -80,7 +80,7 @@ class BaseModel(object):
             losses.append(cur_loss)
             pbar.update(num_batches_completed)
         pbar.finish()
-        test_data_set.complete_epoch()
+        test_data_set.reset()
         loss = np.mean(losses)
 
         print("a%d: acc = %.2f%% = %d / %d, loss = %.4f" % (global_step, 100 * float(num_corrects)/total,
