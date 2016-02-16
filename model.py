@@ -87,8 +87,8 @@ class Model(object):
             with tf.name_scope('opt'):
                 # loss_averages_op = ema.apply(losses + [total_loss])
                 # with tf.control_dependencies([loss_averages_op]):
-                # opt = tf.train.GradientDescentOptimizer(learning_rate)
-                opt = tf.train.AdagradOptimizer(learning_rate)
+                opt = tf.train.GradientDescentOptimizer(learning_rate)
+                # opt = tf.train.AdagradOptimizer(learning_rate)
                 grads_and_vars = opt.compute_gradients(cross_entropy)
                 # clipped_grads_and_vars = [(tf.clip_by_norm(grad, params.max_grad_norm), var) for grad, var in grads_and_vars]
                 opt_op = opt.apply_gradients(grads_and_vars, global_step=global_step)
@@ -210,8 +210,7 @@ class Model(object):
         num_corrects, total = 0, 0
         print "testing %d batches x %d examples (%s) ..." % \
               (num_batches, test_data_set.batch_size, test_data_set.name)
-        pbar = pb.ProgressBar(widgets=["epoch %d:" % (test_data_set.num_epochs_completed + 1),
-                                       pb.Percentage(), pb.Bar(), pb.ETA()], maxval=num_batches)
+        pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.ETA()], maxval=num_batches)
         pbar.start()
         losses = []
         for num_batches_completed in xrange(num_batches):
