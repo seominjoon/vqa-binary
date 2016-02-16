@@ -9,16 +9,12 @@ from data import DataSet
 
 
 class Model(object):
-    def __init__(self, tf_graph, params, log_dir="log", name=None):
+    def __init__(self, tf_graph, params, name=None):
         self.tf_graph = tf_graph
         self.params = params
-        self.save_dir = params.save_dir
         self.name = name if name else self.__class__.__name__
         with tf_graph.as_default():
             self._build_tf_graph()
-            self.saver = tf.train.Saver()
-            self.writer = tf.train.SummaryWriter(log_dir, tf_graph.as_graph_def())
-
 
     def _build_tf_graph(self):
         print "building graph ..."
@@ -90,8 +86,8 @@ class Model(object):
             with tf.name_scope('opt'):
                 # loss_averages_op = ema.apply(losses + [total_loss])
                 # with tf.control_dependencies([loss_averages_op]):
-                opt = tf.train.GradientDescentOptimizer(learning_rate)
-                # opt = tf.train.AdagradOptimizer(learning_rate)
+                # opt = tf.train.GradientDescentOptimizer(learning_rate)
+                opt = tf.train.AdagradOptimizer(learning_rate)
                 grads_and_vars = opt.compute_gradients(cross_entropy)
                 # clipped_grads_and_vars = [(tf.clip_by_norm(grad, params.max_grad_norm), var) for grad, var in grads_and_vars]
                 opt_op = opt.apply_gradients(grads_and_vars, global_step=global_step)
@@ -143,7 +139,7 @@ class Model(object):
         feed_dict[self.learning_rate] = learning_rate
         return sess.run([self.opt_op, self.merged_summary, self.global_step], feed_dict=feed_dict)
 
-    def train(self, sess, train_data_set, learning_rate, val_data_set=None):
+    def train(self, sess, writer, train_data_set, learning_rate, val_data_set=None):
         assert isinstance(train_data_set, DataSet)
         params = self.params
         num_batches = params.train_num_batches
@@ -157,7 +153,7 @@ class Model(object):
             for num_batches_completed in xrange(num_batches):
                 image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = train_data_set.get_next_labeled_batch()
                 _, summary_str, global_step = self.train_batch(sess, image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch, learning_rate)
-                self.writer.add_summary(summary_str, global_step)
+                writer.add_summary(summary_str, global_step)
                 pbar.update(num_batches_completed)
             pbar.finish()
             train_data_set.complete_epoch()

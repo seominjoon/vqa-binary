@@ -23,12 +23,11 @@ flags.DEFINE_string("val_len", "val/len.json", "len.json file path for valing [v
 flags.DEFINE_string("vocab_dict", "val/vocab_dict.json", "vocab_dict.json file path [val/vocab_dict.json]")
 
 # training parameters
-flags.DEFINE_integer("num_epochs", 100, "Total number of epochs [100]")
-flags.DEFINE_integer("batch_size", 100, "Batch size [100]")
+flags.DEFINE_integer("num_epochs", 300, "Total number of epochs [100]")
+flags.DEFINE_integer("batch_size", 500, "Batch size [100]")
 flags.DEFINE_integer("rnn_num_layers", 3, "Number of RNN (LSTM) layers [3]")
 flags.DEFINE_integer("rnn_hidden_size", 300, "Hidden size of RNN (LSTM) [300]")
-flags.DEFINE_integer("common_size", 1024, "Common size [1024]")
-flags.DEFINE_float("learning_rate", 3e-4, "Learning rate [0.01]")
+flags.DEFINE_float("learning_rate", 0.01, "Learning rate [0.01]")
 flags.DEFINE_float("max_grad_norm", 40, "Max gradient norm during trainig [40]")
 
 # training and testing options
@@ -73,18 +72,19 @@ def main(_):
     pprint(FLAGS.__dict__)
 
     tf_graph = tf.Graph()
-    model = Model(tf_graph, FLAGS, log_dir=FLAGS.log_dir, name="my")
-    with tf.Session(graph=tf_graph) as sess:
-        sess.run(tf.initialize_all_variables())
-        if FLAGS.train:
-            model.train(sess, train_data_set, FLAGS.learning_rate, val_data_set=val_data_set)
-        else:
-            model.load(sess)
+    sess = tf.Session(graph=tf_graph)
+    model = Model(tf_graph, FLAGS, name='my')
+    sess.run(tf.initialize_all_variables())
+    writer = tf.train.SummaryWriter(FLAGS.log_dir, sess.graph_def())
+    if FLAGS.train:
+        model.train(sess, writer, train_data_set, FLAGS.learning_rate, val_data_set=val_data_set)
+    else:
+        model.load(sess)
 
-        print "training complete."
-        print "-" * 80
-        model.test(sess, train_data_set, num_batches=FLAGS.train_num_batches)
-        model.test(sess, val_data_set, num_batches=FLAGS.val_num_batches)
+    print "training complete."
+    print "-" * 80
+    model.test(sess, train_data_set, num_batches=FLAGS.train_num_batches)
+    model.test(sess, val_data_set, num_batches=FLAGS.val_num_batches)
 
 if __name__ == "__main__":
     tf.app.run()
