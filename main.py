@@ -56,6 +56,8 @@ def main(_):
     FLAGS.num_mcs = train_data_set.num_mcs
     val_data_set = read_vqa(FLAGS.batch_size, FLAGS.val_image_rep_h5, FLAGS.val_image_idx,
                             FLAGS.val_sent_h5, FLAGS.val_len, FLAGS.val_label, name='test')
+    FLAGS.train_num_batches = train_data_set.num_batches
+    FLAGS.val_num_batches = val_data_set.num_batches
 
     if not os.path.exists(FLAGS.save_dir):
         os.mkdir(FLAGS.save_dir)
