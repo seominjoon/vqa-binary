@@ -29,7 +29,6 @@ class BaseModel(object):
     def test_batch(self, sess, image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch):
         raise Exception("Implement this function!")
 
-
     def train(self, sess, writer, train_data_set, learning_rate, val_data_set=None):
         assert isinstance(train_data_set, DataSet)
         params = self.params
@@ -52,11 +51,12 @@ class BaseModel(object):
             if val_data_set and (epoch_idx + 1) % params.eval_period == 0:
                 print("evaluating on train data ...")
                 self.test(sess, train_data_set, num_batches=params.eval_num_batches)
-                print("evaluating on test data ...")
+                print("evaluating on val data ...")
                 self.test(sess, val_data_set, num_batches=params.eval_num_batches)
 
             if (epoch_idx + 1) % params.save_period == 0:
                 self.save(sess)
+        print("training done.")
 
     def _pad(self, array, inc):
         assert len(array.shape) > 0, "Array must be at least 1D!"
@@ -83,8 +83,8 @@ class BaseModel(object):
         test_data_set.reset()
         loss = np.mean(losses)
 
-        print("a%d: acc = %.2f%% = %d / %d, loss = %.4f" % (global_step, 100 * float(num_corrects)/total,
-                                                            num_corrects, total, loss))
+        print("at %d: acc = %.2f%% = %d / %d, loss = %.4f" %
+              (global_step, 100 * float(num_corrects)/total, num_corrects, total, loss))
 
     def save(self, sess):
         print("saving model ...")

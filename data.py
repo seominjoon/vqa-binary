@@ -1,4 +1,5 @@
-import tensorflow as tf
+import os
+
 import h5py
 import numpy as np
 import json
@@ -61,6 +62,7 @@ class DataSet(object):
         self.idx_in_epoch = 0
         np.random.shuffle(self.idxs)
 
+
 def read_vqa(batch_size, image_rep_h5_path, image_idx_path, sent_h5_path, len_path, labels_path=None, name=""):
     image_rep_h5 = h5py.File(image_rep_h5_path, 'r')
     image_rep_ds = image_rep_h5['data']
@@ -75,4 +77,14 @@ def read_vqa(batch_size, image_rep_h5_path, image_idx_path, sent_h5_path, len_pa
     idxs = range(len(labels))
     data_set = DataSet(batch_size, idxs, image_rep_ds, image_idxs, sent_ds, lens, labels=labels, name=name)
     return data_set
+
+
+def read_vqa_from_dir(batch_size, data_dir, name=""):
+    image_rep_h5_path = os.path.join(data_dir, 'image_rep.h5')
+    image_idx_path = os.path.join(data_dir, 'image_idx.json')
+    sent_h5_path = os.path.join(data_dir, 'sent.h5')
+    len_path = os.path.join(data_dir, 'len.json')
+    label_path = os.path.join(data_dir, 'label.json')
+    if not os.path.exists(label_path): label_path = None
+    data_set = read_vqa(batch_size, image_rep_h5_path, image_idx_path, sent_h5_path, len_path, label_path, name=name)
 
