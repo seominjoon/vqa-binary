@@ -6,11 +6,11 @@ import progressbar as pb
 parser = argparse.ArgumentParser()
 parser.add_argument('question_json_path')
 parser.add_argument('annotation_json_path')
-parser.add_argument('image_folder_path')
-parser.add_argument('target_path')
-parser.add_argument('--prefix', default="COCO_train2014_")
-parser.add_argument('--id_len', default=12, type=int)
-parser.add_argument('--ext', default='.jpg')
+parser.add_argument('images_dir')
+parser.add_argument('target_dir')
+parser.add_argument('--prefix')
+parser.add_argument('--ext')
+parser.add_argument('--zfill_width', default=12, type=int)
 
 ARGS = parser.parse_args()
 
@@ -18,11 +18,11 @@ ARGS = parser.parse_args()
 def prepro_common(args):
     question_json_path = args.question_json_path
     annotation_json_path = args.annotation_json_path
-    image_folder_path = args.image_folder_path
+    images_dir = args.images_dir
     id_len = args.id_len
     prefix = args.prefix
     ext = args.ext
-    target_path = args.target_path
+    target_dir = args.target_dir
 
     print "Loading %s ..." % question_json_path
     question_json = json.load(open(question_json_path, 'rb'))
@@ -48,7 +48,7 @@ def prepro_common(args):
         multiple_choices = question_dict['multiple_choices']
         answer = annotation_dict['multiple_choice_answer']
         image_id_str = str(image_id).zfill(id_len)
-        image_path = os.path.join(image_folder_path, "%s%s%s" % (prefix, image_id_str, ext))
+        image_path = os.path.join(images_dir, "%s%s%s" % (prefix, image_id_str, ext))
 
         question_list.append(question)
         multiple_choices_list.append(multiple_choices)
@@ -64,15 +64,15 @@ def prepro_common(args):
 
     pbar.finish()
 
-    if not os.path.exists(target_path):
-        os.mkdir(target_path)
+    if not os.path.exists(target_dir):
+        os.mkdir(target_dir)
 
     print "Dumping json files ..."
-    json.dump(question_list, open(os.path.join(target_path, "question.json"), 'w'))
-    json.dump(multiple_choices_list, open(os.path.join(target_path, "multiple_choice.json"), 'w'))
-    json.dump(answer_list, open(os.path.join(target_path, "answer.json"), 'w'))
-    json.dump(image_path_list, open(os.path.join(target_path, "image_path.json"), 'w'))
-    json.dump(image_index_list, open(os.path.join(target_path, "image_idx.json"), 'w'))
+    json.dump(question_list, open(os.path.join(target_dir, "question.json"), 'w'))
+    json.dump(multiple_choices_list, open(os.path.join(target_dir, "multiple_choice.json"), 'w'))
+    json.dump(answer_list, open(os.path.join(target_dir, "answer.json"), 'w'))
+    json.dump(image_path_list, open(os.path.join(target_dir, "image_path.json"), 'w'))
+    json.dump(image_index_list, open(os.path.join(target_dir, "image_idx.json"), 'w'))
 
 if __name__ == "__main__":
     prepro_common(ARGS)
