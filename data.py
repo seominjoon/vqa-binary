@@ -34,8 +34,17 @@ class DataSet(object):
         self.name = name
         self.reset()
 
+    @staticmethod
+    def _pad(array, dim, new_len):
+        p = np.zeros([len(array.shape), 2])
+        diff = new_len -array.shape[dim]
+        if diff > 0:
+            p[dim][1] = diff
+            array = np.pad(array, p)
+        assert array.shape[dim] == new_len
+        return array
 
-    def get_next_labeled_batch(self):
+    def get_next_labeled_batch(self, sent_size=None):
         assert self.has_next_batch(), "End of epoch. Call 'complete_epoch()' to rewind."
         from_, to = self.idx_in_epoch, self.idx_in_epoch + self.batch_size
         if self.include_leftover and to > self.num_examples:
@@ -44,9 +53,12 @@ class DataSet(object):
         cur_image_idxs = self.image_idxs[cur_idxs]
         image_rep_batch = np.array([self.image_rep_ds[cur_image_idx] for cur_image_idx in cur_image_idxs])
         sent_batch = np.array([self.sent_ds[cur_idx] for cur_idx in cur_idxs])
-        len_batch = self.lens[cur_idxs]
-        label_batch = self.labels[cur_idxs]
+        len_batch = np.array(self.lens[cur_idxs])
+        label_batch = np.array(self.labels[cur_idxs])
         self.idx_in_epoch += self.batch_size
+        if sent_size:
+            assert sent_size >= self.max_sent_size, "sent size must be bigger than this data's max sent size."
+            sent_batch = DataSet._pad(sent_batch, 2, sent_size)
         return image_rep_batch, sent_batch, len_batch, label_batch
 
     def has_next_batch(self):

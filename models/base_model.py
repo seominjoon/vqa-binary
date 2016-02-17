@@ -43,12 +43,7 @@ class BaseModel(object):
                                            pb.Percentage(), pb.Bar(), pb.ETA()], maxval=num_batches)
             pbar.start()
             for num_batches_completed in xrange(num_batches):
-                image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = train_data_set.get_next_labeled_batch()
-                new_size = np.array([batch_size, num_mcs, max_sent_size])
-                if mc_sent_batch.shape[2] < max_sent_size:
-                    mc_sent_batch = BaseModel._pad(mc_sent_batch, 2, max_sent_size)
-                    mc_len_batch = BaseModel._pad(mc_len_batch, 2, max_len_size)
-                    mc_label_batch = BaseModel._pad(mc_label_batch, 2, max_label_size)
+                image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = train_data_set.get_next_labeled_batch(sent_size=max_sent_size)
                 _, summary_str, global_step = self.train_batch(sess, image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch, learning_rate)
                 writer.add_summary(summary_str, global_step)
                 pbar.update(num_batches_completed)
@@ -65,16 +60,6 @@ class BaseModel(object):
                 self.save(sess)
         print("training done.")
 
-    @staticmethod
-    def _pad(array, dim, new_len):
-        p = np.zeros([len(array.shape), 2])
-        diff = new_len -array.shape[dim]
-        if diff > 0:
-            p[dim][1] = diff
-            array = np.pad(array, p)
-        assert array.shape[dim] == new_len
-        return array
-
     def _pad(self, array, inc):
         assert len(array.shape) > 0, "Array must be at least 1D!"
         if len(array.shape) == 1:
@@ -83,6 +68,7 @@ class BaseModel(object):
             return np.concatenate([array, np.zeros([inc, array.shape[1]])], 0)
 
     def test(self, sess, test_data_set, num_batches=None):
+        max_sent_size = self.params.max_sent_size
         num_batches = num_batches if num_batches else test_data_set.num_batches
         num_corrects, total = 0, 0
         string = "N=%d|" % (test_data_set.batch_size * num_batches)
@@ -90,7 +76,7 @@ class BaseModel(object):
         pbar.start()
         losses = []
         for num_batches_completed in xrange(num_batches):
-            image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = test_data_set.get_next_labeled_batch()
+            image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = test_data_set.get_next_labeled_batch(sent_size=max_sent_size)
             cur_num_corrects, cur_loss, _, global_step = self.test_batch(sess, image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch)
             num_corrects += cur_num_corrects
             total += len(image_rep_batch)
