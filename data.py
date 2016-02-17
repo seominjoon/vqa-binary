@@ -87,4 +87,5 @@ def read_vqa_from_dir(batch_size, data_dir, name=""):
     label_path = os.path.join(data_dir, 'label.json')
     if not os.path.exists(label_path): label_path = None
     data_set = read_vqa(batch_size, image_rep_h5_path, image_idx_path, sent_h5_path, len_path, label_path, name=name)
+    return data_set
 
