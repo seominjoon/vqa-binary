@@ -10,7 +10,6 @@ import numpy as np
 
 parser = argparse.ArgumentParser()
 parser.add_argument('root_dir')
-parser.add_argument('target_dir')
 parser.add_argument('--vocab_dict_path', default='')
 parser.add_argument('--vocab_min_count', type=int, default=5)
 
@@ -23,7 +22,6 @@ def prepro_questions(args):
     multiple_choices_list_path = os.path.join(root_dir, 'multiple_choice.json')
     answer_list_path = os.path.join(root_dir, 'answer.json')
     vocab_dict_path = args.vocab_dict_path
-    target_dir = args.target_dir
     vocab_min_count = args.vocab_min_count
 
     print "Loading json files ..."
@@ -86,10 +84,10 @@ def prepro_questions(args):
 
     assert len(sents.shape) == 3
 
-    sent_path = os.path.join(target_dir, "sent.h5")
-    label_path = os.path.join(target_dir, "label.json")
-    vocab_dict_path = os.path.join(target_dir, "vocab_dict.json")
-    len_path = os.path.join(target_dir, "len.json")
+    sent_path = os.path.join(root_dir, "sent.h5")
+    label_path = os.path.join(root_dir, "label.json")
+    vocab_dict_path = os.path.join(root_dir, "vocab_dict.json")
+    len_path = os.path.join(root_dir, "len.json")
 
 
     print "Dumping h5 file ..."

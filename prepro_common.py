@@ -8,8 +8,8 @@ parser.add_argument('question_json_path')
 parser.add_argument('annotation_json_path')
 parser.add_argument('images_dir')
 parser.add_argument('target_dir')
-parser.add_argument('--prefix')
-parser.add_argument('--ext')
+parser.add_argument('--prefix', default="")
+parser.add_argument('--ext', default=".png")
 parser.add_argument('--zfill_width', default=12, type=int)
 
 ARGS = parser.parse_args()
@@ -19,7 +19,7 @@ def prepro_common(args):
     question_json_path = args.question_json_path
     annotation_json_path = args.annotation_json_path
     images_dir = args.images_dir
-    id_len = args.id_len
+    zfill_width = args.zfill_width
     prefix = args.prefix
     ext = args.ext
     target_dir = args.target_dir
@@ -47,7 +47,7 @@ def prepro_common(args):
         question = question_dict['question']
         multiple_choices = question_dict['multiple_choices']
         answer = annotation_dict['multiple_choice_answer']
-        image_id_str = str(image_id).zfill(id_len)
+        image_id_str = str(image_id).zfill(zfill_width)
         image_path = os.path.join(images_dir, "%s%s%s" % (prefix, image_id_str, ext))
 
         question_list.append(question)
