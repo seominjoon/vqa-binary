@@ -29,9 +29,13 @@ def prepro_questions(args):
     multiple_choices_list = json.load(open(multiple_choices_list_path, 'rb'))
     answer_list = json.load(open(answer_list_path, 'rb'))
     if vocab_dict_path:
+        print("vocab dict specified: %s" % vocab_dict_path)
         vocab_dict = json.load(open(vocab_dict_path, 'rb'))
+        create_vocab = False
     else:
+        print("No vocab dict specified. Will create vocab dict.")
         vocab_counter = Counter()
+        create_vocab = True
 
     tok_sents = []
     labels = []
@@ -64,7 +68,7 @@ def prepro_questions(args):
         pbar.update(i+1)
     pbar.finish()
 
-    if not vocab_dict_path:
+    if create_vocab:
         print "creating vocab dict ..."
         vocab_list = zip(*sorted([pair for pair in vocab_counter.iteritems() if pair[1] > vocab_min_count],
                                  key=lambda x: -x[1]))[0]
@@ -97,7 +101,7 @@ def prepro_questions(args):
 
     print "Dumping json files ..."
     json.dump(labels, open(label_path, 'wb'))
-    if not vocab_dict_path:
+    if create_vocab:
         json.dump(vocab_dict, open(vocab_dict_path, 'wb'))
     json.dump(lens, open(len_path, 'wb'))
 
