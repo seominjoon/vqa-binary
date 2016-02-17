@@ -30,7 +30,7 @@ flags.DEFINE_boolean("train", False, "Train? Test if False [False]")
 flags.DEFINE_boolean("load", False, "Load from last stop? [False]")
 flags.DEFINE_string("model", "multi", "Type of model? 'multi' or 'binary' [multi]")
 flags.DEFINE_integer("eval_period", 3, "Evaluation period [3]")
-flags.DEFINE_integer("eval_num_batches", 50, "Number of batches to evaluate during training [50]")
+flags.DEFINE_integer("eval_num_batches", 10, "Number of batches to evaluate during training [10]")
 flags.DEFINE_integer("save_period", 1, "Save period [1]")
 flags.DEFINE_string("save_dir", "save", "Save path [save]")
 flags.DEFINE_string("log_dir", "log", "Log path [log]")
@@ -52,7 +52,8 @@ def main(_):
         FLAGS.image_rep_size = train_data_set.image_rep_size
         FLAGS.max_sent_size = max(train_data_set.max_sent_size, val_data_set.max_sent_size)
         FLAGS.train_num_batches = train_data_set.num_batches
-        FLAGS.eval_num_batches = min(FLAGS.eval_num_batches, train_data_set.num_batches, val_data_set.num_batches)
+        assert FLAGS.eval_num_batches < min(train_data_set.num_batches, val_data_set.num_batches), "num batches should be less"
+        FLAGS.eval_num_batches = FLAGS.eval_num_batches
         FLAGS.num_mcs = train_data_set.num_mcs
         if not os.path.exists(FLAGS.save_dir):
             os.mkdir(FLAGS.save_dir)
