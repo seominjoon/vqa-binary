@@ -53,6 +53,7 @@ def main(_):
         FLAGS.max_sent_size = max(train_data_set.max_sent_size, val_data_set.max_sent_size)
         FLAGS.train_num_batches = train_data_set.num_batches
         FLAGS.eval_num_batches = val_data_set.num_batches
+        FLAGS.num_mcs = train_data_set.num_mcs
         if not os.path.exists(FLAGS.save_dir):
             os.mkdir(FLAGS.save_dir)
     else:
@@ -61,6 +62,7 @@ def main(_):
         FLAGS.image_rep_size = test_data_set.image_rep_size
         FLAGS.max_sent_size = test_data_set.max_sent_size
         FLAGS.test_num_batches = test_data_set.num_batches
+        FLAGS.num_mcs = test_data_set.num_mcs
 
     # Time-sensitive parameters. Will be altered if draft.
     if FLAGS.draft:
