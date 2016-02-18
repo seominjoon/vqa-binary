@@ -51,9 +51,7 @@ class BaseModel(object):
             train_data_set.complete_epoch()
 
             if val_data_set and (epoch_idx + 1) % params.eval_period == 0:
-                print("evaluating on train data ...")
                 self.test(sess, train_data_set, num_batches=params.eval_num_batches)
-                print("evaluating on val data ...")
                 self.test(sess, val_data_set, num_batches=params.eval_num_batches)
 
             if (epoch_idx + 1) % params.save_period == 0:
@@ -71,7 +69,7 @@ class BaseModel(object):
         max_sent_size = self.params.max_sent_size
         num_batches = num_batches if num_batches else test_data_set.num_batches
         num_corrects, total = 0, 0
-        string = "N=%d|" % (test_data_set.batch_size * num_batches)
+        string = "%s:N=%d|" % (test_data_set.name, test_data_set.batch_size * num_batches)
         pbar = pb.ProgressBar(widgets=[string, pb.Percentage(), pb.Bar(), pb.ETA()], maxval=num_batches)
         pbar.start()
         losses = []

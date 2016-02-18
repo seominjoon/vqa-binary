@@ -35,13 +35,11 @@ class DataSet(object):
         self.reset()
 
     @staticmethod
-    def _pad(array, dim, new_len):
-        p = np.zeros([len(array.shape), 2])
-        diff = new_len -array.shape[dim]
+    def _pad(array, new_len):
+        diff = new_len - array.shape[2]
         if diff > 0:
-            p[dim][1] = diff
-            array = np.pad(array, p)
-        assert array.shape[dim] == new_len
+            p = ((0,0), (0,0), (0,diff))
+            array = np.pad(array, p, mode='constant')
         return array
 
     def get_next_labeled_batch(self, sent_size=None):
@@ -58,7 +56,7 @@ class DataSet(object):
         self.idx_in_epoch += self.batch_size
         if sent_size:
             assert sent_size >= self.max_sent_size, "sent size must be bigger than this data's max sent size."
-            sent_batch = DataSet._pad(sent_batch, 2, sent_size)
+            sent_batch = DataSet._pad(sent_batch, sent_size)
         return image_rep_batch, sent_batch, len_batch, label_batch
 
     def has_next_batch(self):
