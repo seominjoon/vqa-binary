@@ -1,8 +1,7 @@
 import json
-import os
-from pprint import pprint
-
 import tensorflow as tf
+
+from pprint import pprint
 
 from data import read_vqa, read_vqa_from_dir
 from models.binary_model import BinaryModel
@@ -91,7 +90,7 @@ def main(_):
             model.train(sess, writer, train_data_set, FLAGS.learning_rate, val_data_set=val_data_set)
         else:
             model.load(sess)
-            model.test(sess, test_data_set, num_batches=FLAGS.val_num_batches)
+            model.test(sess, test_data_set, num_batches=FLAGS.test_num_batches)
 
 if __name__ == "__main__":
     tf.app.run()
