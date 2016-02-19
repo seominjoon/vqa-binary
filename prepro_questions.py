@@ -4,7 +4,7 @@ import argparse
 import re
 from collections import Counter
 
-import progressbar as pb
+#import progressbar as pb
 import h5py
 import numpy as np
 
@@ -12,6 +12,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('root_dir')
 parser.add_argument('--vocab_dict_path', default='')
 parser.add_argument('--vocab_min_count', type=int, default=5)
+parser.add_argument('--qa2hypo', default=False)
 
 ARGS = parser.parse_args()
 
@@ -21,8 +22,10 @@ def prepro_questions(args):
     question_list_path = os.path.join(root_dir, 'question.json')
     multiple_choices_list_path = os.path.join(root_dir, 'multiple_choice.json')
     answer_list_path = os.path.join(root_dir, 'answer.json')
+
     vocab_dict_path = args.vocab_dict_path
     vocab_min_count = args.vocab_min_count
+    ifqa2hypo = args.qa2hypo
 
     print "Loading json files ..."
     question_list = json.load(open(question_list_path, 'rb'))
@@ -44,13 +47,17 @@ def prepro_questions(args):
 
     print "Preprocessing questions ..."
     num_questions = len(question_list)
-    pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=num_questions).start()
+    #pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=num_questions).start()
     for i, (raw_question, raw_mcs, raw_answer) in enumerate(zip(question_list, multiple_choices_list, answer_list)):
         tok_question = _tokenize(raw_question)
         tok_mcs = [_tokenize(raw_mc) for raw_mc in raw_mcs]
         tok_answer = _tokenize(raw_answer)
 
-        tok_sent = [_append_answer(tok_question, tok_mc) for tok_mc in tok_mcs]
+        tok_sent = None
+        if ifqa2hypo:
+            tok_sent = [_qa2hypo(tok_question, tok_mc) for tok_mc in tok_mcs]
+        else:
+            tok_sent = [_append_answer(tok_question, tok_mc) for tok_mc in tok_mcs]
         label = [int(tok_answer == tok_mc) for tok_mc in tok_mcs]
         tok_sents.append(tok_sent)
         labels.append(label)
@@ -65,8 +72,8 @@ def prepro_questions(args):
                 for tok in tok_mc: vocab_counter[tok] += 1
             for tok in tok_answer: vocab_counter[tok] += 1
 
-        pbar.update(i+1)
-    pbar.finish()
+        #pbar.update(i+1)
+    #pbar.finish()
 
     if create_vocab:
         print "creating vocab dict ..."
@@ -114,6 +121,9 @@ def _tokenize(raw):
 
 def _append_answer(question, answer):
     return question + answer
+
+def _qa2hypo(question, answer):
+	return question + answer
 
 if __name__ == "__main__":
     prepro_questions(ARGS)

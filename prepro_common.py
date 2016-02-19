@@ -1,7 +1,7 @@
 import json
 import os
 import argparse
-import progressbar as pb
+#import progressbar as pb
 
 parser = argparse.ArgumentParser()
 parser.add_argument('question_json_path')
@@ -37,7 +37,7 @@ def prepro_common(args):
 
     num_questions = len(question_json['questions'])
 
-    pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=num_questions).start()
+    #pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=num_questions).start()
 
     for idx, (question_dict, annotation_dict) in enumerate(zip(question_json['questions'], annotation_json['annotations'])):
         question_id = question_dict['question_id']
@@ -60,9 +60,9 @@ def prepro_common(args):
             image_path_dict[image_path] = len(image_path_list)
             image_path_list.append(image_path)
 
-        pbar.update(idx + 1)
+        #pbar.update(idx + 1)
 
-    pbar.finish()
+    #pbar.finish()
 
     if not os.path.exists(target_dir):
         os.mkdir(target_dir)
