@@ -8,13 +8,13 @@ parser.add_argument('root_dir')
 ARGS = parser.parse_args()
 
 
-def prepro_questions_annotations(args):
+def qa2hypo(args):
 	root_dir = args.root_dir
 	questions_path = os.path.join(root_dir, 'MultipleChoice_shining3_all_questions.json')
 	annotations_path = os.path.join(root_dir, 'shining3_all_annotations.json')
 
 	print "Loading json files ..."
-	questions = json.load(open(questions_path, 'rb'))
+	#questions = json.load(open(questions_path, 'rb'))
 	annotations = json.load(open(annotations_path, 'rb'))
 	
 	#return questions, annotations
@@ -27,8 +27,10 @@ def prepro_questions_annotations(args):
 
 
 
+
+
 if __name__ == "__main__":
-	prepro_questions_annotations(ARGS)
+	qa2hypo(ARGS)
 	#questions, annotations = read_questions_annotations(ARGS)
 
 	# for key in questions:
