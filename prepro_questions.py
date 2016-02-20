@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('root_dir')
 parser.add_argument('--vocab_dict_path', default='')
 parser.add_argument('--vocab_min_count', type=int, default=5)
-parser.add_argument('--qa2hypo', default=False)
+parser.add_argument('--qa2hypo', default=0)
 
 ARGS = parser.parse_args()
 
@@ -50,14 +50,18 @@ def prepro_questions(args):
     #pbar = pb.ProgressBar(widgets=[pb.Percentage(), pb.Bar(), pb.Timer()], maxval=num_questions).start()
     for i, (raw_question, raw_mcs, raw_answer) in enumerate(zip(question_list, multiple_choices_list, answer_list)):
         tok_question = _tokenize(raw_question)
-        tok_mcs = [_tokenize(raw_mc) for raw_mc in raw_mcs]
+        tok_mcs = [_tokenize(raw_mc) for raw_mc in raw_mcs] # mc: multiple choices
         tok_answer = _tokenize(raw_answer)
 
+        # Generate hypotheses
         tok_sent = None
         if ifqa2hypo:
             tok_sent = [_qa2hypo(tok_question, tok_mc) for tok_mc in tok_mcs]
-        else:
+            print "qa2hypo is used!"
+	else:
             tok_sent = [_append_answer(tok_question, tok_mc) for tok_mc in tok_mcs]
+            print "append_answer is used!"
+        
         label = [int(tok_answer == tok_mc) for tok_mc in tok_mcs]
         tok_sents.append(tok_sent)
         labels.append(label)
