@@ -39,7 +39,7 @@ QUESTION_TYPES = ['__+', \
 # not -1 or 0: sample by question type
 SAMPLE_TYPE = -1
 # used when SAMPLE_TYPE == -1
-QUESTION_TYPE = 1
+QUESTION_TYPE = 8
 
 
 
@@ -174,8 +174,8 @@ def rule_based_transform(question, ans, q_type):
 			hypo = replace(question, s, e, ans)
 
 		elif q_type == QUESTION_TYPES[8]:
-			s, e = test_pattern('how', question)
-			hypo = replace(question, s, e, ans)
+			s, e = test_pattern('(\Ahow )|(\W+how )', question)
+			hypo = replace(question, s, e, ' '+ans+' is how ')
 
 		elif q_type == QUESTION_TYPES[9]:
 			s, e = test_pattern('(name)|(choose)|(identify)', question)
