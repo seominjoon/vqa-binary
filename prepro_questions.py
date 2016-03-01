@@ -124,6 +124,8 @@ def _tokenize(raw):
 
 
 def _append_answer(question, answer):
+    assert isinstance(question, list)
+    assert isinstance(answer, list)
     return question + answer
 
 def _qa2hypo(question, answer):
