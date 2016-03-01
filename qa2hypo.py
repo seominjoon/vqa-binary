@@ -22,7 +22,8 @@ QUESTION_TYPES = ['__+', \
 '(whom '+AUX_V_REGEX+'.*)|(who '+AUX_V_REGEX+'.*)|(who\?)|(whom\?)', \
 'why', \
 '(how many)|(how much)', \
-'(\Ahow [^(many)(much)])|(\W+how [^(many)(much)])'
+'(\Ahow [^(many)(much)])|(\W+how [^(many)(much)])', \
+'(name)|(choose)|(identify)'
 ]
 
 # TODO: identify, name, choose
@@ -37,7 +38,7 @@ QUESTION_TYPES = ['__+', \
 # not -1 or 0: sample by question type
 SAMPLE_TYPE = 0
 # used when SAMPLE_TYPE == -1
-QUESTION_TYPE = 0
+QUESTION_TYPE = 9
 
 
 
@@ -137,15 +138,18 @@ def rule_based_transform(question, ans, q_type):
 			hypo = replace(question, s, e, ans)
 		elif q_type == QUESTION_TYPES[6]:
 			s, e = test_pattern('why', question)
-			hypo = question+' | '+ans
+			hypo = strip_question_mark(question)+' '+ans
 		elif q_type == QUESTION_TYPES[7]:
 			s, e = test_pattern('(how many)|(how much)', question)
 			hypo = replace(question, s, e, ans)
 		elif q_type == QUESTION_TYPES[8]:
 			s, e = test_pattern('how', question)
 			hypo = replace(question, s, e, ans)
+		elif q_type == QUESTION_TYPES[9]:
+			s, e = test_pattern('(name)|(choose)|(identify)', question)
+			hypo = replace(question, s, e, ans+' is')
 		else:
-			hypo = question+' | '+ans
+			hypo = strip_nonalnum_re(question)+' '+ans
 
 	hypo = strip_question_mark(hypo)
 	return hypo
@@ -153,10 +157,13 @@ def rule_based_transform(question, ans, q_type):
 
 # strip the question mark
 def strip_question_mark(sent):
-	if sent.endswith('?'):
-		return sent[:-1]+'.'
+	if sent.endswith('?') or sent.endswith(':'):
+		return sent[:-1]
 	else:
 		return sent
+
+def strip_nonalnum_re(sent):
+    return re.sub(r"^\W+|\W+$", "", sent)
 
 
 # sample sentences
