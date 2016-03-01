@@ -12,6 +12,12 @@ ARGS = parser.parse_args()
 # auxiliary verbs, from https://en.wikipedia.org/wiki/Auxiliary_verb
 AUX_V = ['am', 'is', 'are', 'can', 'could', 'dare', 'do', 'does', 'did', 'have', 'had', 'may', 'might', 'must', 'need', 'shall', 'should', 'will', 'would']
 AUX_V_REGEX = '('+'|'.join(['('+AUX_V[i]+')' for i in range(len(AUX_V))])+')'
+AUX_V_BE = ['am', 'is', 'are']
+AUX_V_BE_REGEX = '('+'|'.join(['('+AUX_V_BE[i]+')' for i in range(len(AUX_V_BE))])+')'
+AUX_V_DOES = ['can', 'could', 'dare', 'does', 'did', 'have', 'had', 'may', 'might', 'must', 'need', 'shall', 'should', 'will', 'would']
+AUX_V_DOES_REGEX = '('+'|'.join(['('+AUX_V_DOES[i]+')' for i in range(len(AUX_V_DOES))])+')'
+AUX_V_DO_REGEX = '(do)'
+
 
 # global variables
 QUESTION_TYPES = ['__+', \
@@ -26,19 +32,14 @@ QUESTION_TYPES = ['__+', \
 '(name)|(choose)|(identify)'
 ]
 
-# TODO: identify, name, choose
-
-# tmp = '[^('+'|'.join(['('+QUESTION_TYPES[i]+')' for i in range(len(QUESTION_TYPES))])+')]'
-# QUESTION_TYPES.append(tmp)
-# print tmp
 
 # SAMPLE_TYPE:
 # -1: don't sample randomly, sample by question type
 # 0: sample the inverse of all the question types
 # not -1 or 0: sample by question type
-SAMPLE_TYPE = 0
+SAMPLE_TYPE = -1
 # used when SAMPLE_TYPE == -1
-QUESTION_TYPE = 9
+QUESTION_TYPE = 1
 
 
 
@@ -87,7 +88,7 @@ def qa2hypo(args):
 	
 	# execute the sampling (for the purpose of examining the result)
 	q_type = QUESTION_TYPES[QUESTION_TYPE]
-	qa_pairs_list = sample_qa(qa_pairs_list, k, q_type)
+	qa_pairs_list = sample_qa(qa_pairs_list, k, q_type) # set the case lower in the function for questions
 	
 	ctr = 0
 	for item in qa_pairs_list:
@@ -98,7 +99,7 @@ def qa2hypo(args):
 
 		# determine the question type:
 		if k != -1:
-			q_type = 'test'
+			q_type = get_question_type(question)
 
 		print 'Question:', question
 		print 'Answer:', ans
@@ -111,6 +112,12 @@ def qa2hypo(args):
 		print "--------------------------------------"
 	print ctr
 
+# determine the question type
+def get_question_type(question):
+	for q_type in QUESTION_TYPES:
+		if re.search(q_type, question):
+			return q_type
+	return 'none of these'
 
 # rule based qa2hypo transformation
 def rule_based_transform(question, ans, q_type):
@@ -118,36 +125,62 @@ def rule_based_transform(question, ans, q_type):
 		s, e = test_pattern(q_type, question)
 		hypo = replace(question, s, e, ans)
 	else:
-		# TODO: change the order
 		if q_type == QUESTION_TYPES[1]:
 			s, e = test_pattern('when', question)
-			hypo = replace(question, s, e, ans)
-		# TODO: change the order
+			if re.search('when '+AUX_V_DOES_REGEX, question):
+				s2, e2 = test_pattern('when '+AUX_V_DOES_REGEX, question)
+				hypo = replace(question, s2, e2, '')
+				hypo = strip_nonalnum_re(hypo)+' in '+ans
+			elif re.search('when '+AUX_V_DO_REGEX, question):
+				s3, e3 = test_pattern('when '+AUX_V_DO_REGEX, question)
+				hypo = replace(question, s3, e3, '')
+				hypo = strip_nonalnum_re(hypo)+' in '+ans
+			else:
+				hypo = replace(question, s, e, ans)
+
 		elif q_type == QUESTION_TYPES[2]:
 			s, e = test_pattern('where', question)
-			hypo = replace(question, s, e, ans)
+			if re.search('where '+AUX_V_DOES_REGEX, question):
+				s2, e2 = test_pattern('where '+AUX_V_DOES_REGEX, question)
+				hypo = replace(question, s2, e2, '')
+				hypo = strip_nonalnum_re(hypo)+' at '+ans
+			elif re.search('where '+AUX_V_DO_REGEX, question):
+				s3, e3 = test_pattern('where '+AUX_V_DO_REGEX, question)
+				hypo = replace(question, s3, e3, '')
+				hypo = strip_nonalnum_re(hypo)+' in '+ans
+			else:
+				hypo = replace(question, s, e, ans)
+
 		elif q_type == QUESTION_TYPES[3]:
 			s, e = test_pattern('what', question)
 			hypo = replace(question, s, e, ans)
-		# TODO: pick out the cases where which is leading a clause
+
 		elif q_type == QUESTION_TYPES[4]:
 			s, e = test_pattern('which', question)
 			hypo = replace(question, s, e, ans)
+
 		elif q_type == QUESTION_TYPES[5]:
 			s, e = test_pattern('(who)|(whom)', question)
 			hypo = replace(question, s, e, ans)
+
 		elif q_type == QUESTION_TYPES[6]:
 			s, e = test_pattern('why', question)
-			hypo = strip_question_mark(question)+' '+ans
+			hypo = strip_question_mark(question)+', '+ans
+			if not re.search('because', ans, re.IGNORECASE):
+				hypo = strip_question_mark(question)+', because '+ans
+
 		elif q_type == QUESTION_TYPES[7]:
 			s, e = test_pattern('(how many)|(how much)', question)
 			hypo = replace(question, s, e, ans)
+
 		elif q_type == QUESTION_TYPES[8]:
 			s, e = test_pattern('how', question)
 			hypo = replace(question, s, e, ans)
+
 		elif q_type == QUESTION_TYPES[9]:
 			s, e = test_pattern('(name)|(choose)|(identify)', question)
 			hypo = replace(question, s, e, ans+' is')
+
 		else:
 			hypo = strip_nonalnum_re(question)+' '+ans
 
@@ -162,9 +195,9 @@ def strip_question_mark(sent):
 	else:
 		return sent
 
+# strip any non alnum characters in the end
 def strip_nonalnum_re(sent):
     return re.sub(r"^\W+|\W+$", "", sent)
-
 
 # sample sentences
 def sample_qa(qa_pairs_list, k, q_type):
@@ -198,6 +231,7 @@ def sample_qa_inverse(qa_pairs_list):
 		q = qa_pairs_list[num]['question'].lower() # use the lower case for all
 		flag = 0
 		for q_type in QUESTION_TYPES:
+			# --- regex ---
 			if re.search(q_type, q) != None:
 				flag = 1
 				break
