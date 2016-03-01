@@ -37,7 +37,7 @@ QUESTION_TYPES = ['__+', \
 # -1: don't sample randomly, sample by question type
 # 0: sample the inverse of all the question types
 # not -1 or 0: sample by question type
-SAMPLE_TYPE = -1
+SAMPLE_TYPE = 200
 # used when SAMPLE_TYPE == -1
 QUESTION_TYPE = 8
 
@@ -78,6 +78,7 @@ def prepro_questions_annotations(args):
 def qa2hypo(args):
 	root_dir = args.root_dir
 	qa_path = os.path.join(root_dir, 'qa_pairs.json')
+	qa_res_path = os.path.join(root_dir, 'qa_res.json')
 
 	print "Loading json files ..."
 	qa_pairs = json.load(open(qa_path, 'rb'))
@@ -90,6 +91,9 @@ def qa2hypo(args):
 	q_type = QUESTION_TYPES[QUESTION_TYPE]
 	qa_pairs_list = sample_qa(qa_pairs_list, k, q_type) # set the case lower in the function for questions
 	
+	# result file
+	res = []
+
 	ctr = 0
 	for item in qa_pairs_list:
 		question = item['question']
@@ -108,9 +112,14 @@ def qa2hypo(args):
 		sent = rule_based_transform(question, ans, q_type)
 		
 		print 'Result:', sent
+		res.append({'Question':question, 'Answer':ans, 'Result':sent})
+
 		ctr += 1
 		print "--------------------------------------"
+	
 	print ctr
+	print "Dumping json files ..."
+	json.dump(res, open(qa_res_path, 'wb'))
 
 # determine the question type
 def get_question_type(question):
@@ -199,6 +208,12 @@ def strip_question_mark(sent):
 def strip_nonalnum_re(sent):
     return re.sub(r"^\W+|\W+$", "", sent)
 
+# replace 
+def replace(text, start, end, replacement):
+	text_left = text[:start]
+	text_right = text[end:]
+	return text_left+replacement+text_right
+
 # sample sentences
 def sample_qa(qa_pairs_list, k, q_type):
 	l = range(len(qa_pairs_list))
@@ -239,13 +254,6 @@ def sample_qa_inverse(qa_pairs_list):
 			l_sampled.append(num)
 
 	return [qa_pairs_list[i] for i in l_sampled]
-
-
-# replace 
-def replace(text, start, end, replacement):
-	text_left = text[:start]
-	text_right = text[end:]
-	return text_left+replacement+text_right
 
 
 # for print purpose
