@@ -110,6 +110,13 @@ class MultiModel(BaseModel):
         feed_dict[self.learning_rate] = learning_rate
         return sess.run([self.opt_op, self.merged_summary, self.global_step], feed_dict=feed_dict)
 
+    def _pad(self, array, inc):
+        assert len(array.shape) > 0, "Array must be at least 1D!"
+        if len(array.shape) == 1:
+            return np.concatenate([array, np.zeros([inc])], 0)
+        else:
+            return np.concatenate([array, np.zeros([inc, array.shape[1]])], 0)
+
     def test_batch(self, sess, image_rep_batch, mc_sent_batch, mc_len_batch, target_batch):
         params = self.params
         batch_size = params.batch_size

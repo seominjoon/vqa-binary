@@ -33,9 +33,7 @@ class BaseModel(object):
         assert isinstance(train_data_set, DataSet)
         params = self.params
         num_batches = params.train_num_batches
-        batch_size = params.batch_size
         max_sent_size = params.max_sent_size
-        num_mcs = params.num_mcs
 
         print("training %d epochs ..." % params.num_epochs)
         for epoch_idx in xrange(params.num_epochs):
@@ -57,13 +55,6 @@ class BaseModel(object):
             if (epoch_idx + 1) % params.save_period == 0:
                 self.save(sess)
         print("training done.")
-
-    def _pad(self, array, inc):
-        assert len(array.shape) > 0, "Array must be at least 1D!"
-        if len(array.shape) == 1:
-            return np.concatenate([array, np.zeros([inc])], 0)
-        else:
-            return np.concatenate([array, np.zeros([inc, array.shape[1]])], 0)
 
     def test(self, sess, test_data_set, num_batches=None):
         max_sent_size = self.params.max_sent_size
