@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # training
 #python prepro_common.py ../vqa-data/MultipleChoice_mscoco_train2014_questions.json ../vqa-data/mscoco_train2014_annotations.json ../vqa-data/train2014 train/ --prefix COCO_train2014_
 python prepro_questions.py train --qa2hypo 1 #train/question.json train/multiple_choice.json train/answer.json train
