@@ -121,3 +121,5 @@ def _append_answer(question, ans):
     assert isinstance(ans, list)
     return question + ans
 
+if __name__ == "__main__":
+    prepro_questions(ARGS)
