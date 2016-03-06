@@ -77,7 +77,7 @@ class MultiModel(BaseModel):
             # loss_averages_op = ema.apply(losses + [total_loss])
             # with tf.control_dependencies([loss_averages_op]):
             # opt = tf.train.AdagradOptimizer(learning_rate)
-            grads_and_vars = opt.compute_gradients(total_loss)
+            grads_and_vars = opt.compute_gradients(cross_entropy)
             # clipped_grads_and_vars = [(tf.clip_by_norm(grad, params.max_grad_norm), var) for grad, var in grads_and_vars]
             opt_op = opt.apply_gradients(grads_and_vars, global_step=self.global_step)
 
