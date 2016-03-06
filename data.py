@@ -78,13 +78,13 @@ def read_vqa(batch_size, image_rep_h5_path, image_idx_path, sent_h5_path, len_pa
     image_rep_ds = image_rep_h5['data']
     sent_h5 = h5py.File(sent_h5_path, 'r')
     sent_ds = sent_h5['data']
-    lens = np.array(json.load(open(len_path, 'rb')))
-    image_idxs = np.array(json.load(open(image_idx_path, 'rb')))
+    lens = np.array(json.load(open(len_path, 'r')))
+    image_idxs = np.array(json.load(open(image_idx_path, 'r')))
     if labels_path:
-        labels = np.array(json.load(open(labels_path, 'rb')))
+        labels = np.array(json.load(open(labels_path, 'r')))
     else:
         labels = None
-    idxs = range(len(labels))
+    idxs = list(range(len(labels)))
     data_set = DataSet(batch_size, idxs, image_rep_ds, image_idxs, sent_ds, lens, labels=labels, name=name)
     return data_set
 

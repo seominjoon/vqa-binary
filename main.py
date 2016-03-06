@@ -12,16 +12,16 @@ from models.multi_model import MultiModel
 flags = tf.app.flags
 
 # All the file directories... should get rid of these!
-flags.DEFINE_string("train_dir", "train", "train data directory [train]")
-flags.DEFINE_string("val_dir", "val", "validation data directory [val]")
-flags.DEFINE_string("test_dir", "val", "test data directory [val]")
-flags.DEFINE_string("vocab_dict_path", "train/vocab_dict.json", "vocab dict path [train/vocab_dict.json]")
+flags.DEFINE_string("train_dir", "dqa-train", "train data directory [train]")
+flags.DEFINE_string("val_dir", "dqa-test", "validation data directory [val]")
+flags.DEFINE_string("test_dir", "dqa-test", "test data directory [val]")
+flags.DEFINE_string("vocab_dict_path", "dqa-train/vocab_dict.json", "vocab dict path [train/vocab_dict.json]")
 
 # training parameters
-flags.DEFINE_integer("num_epochs", 300, "Total number of epochs [300]")
+flags.DEFINE_integer("num_epochs", 100, "Total number of epochs [300]")
 flags.DEFINE_integer("batch_size", 100, "Batch size [100]")
-flags.DEFINE_integer("rnn_num_layers", 3, "Number of RNN (LSTM) layers [3]")
-flags.DEFINE_integer("rnn_hidden_size", 300, "Hidden size of RNN (LSTM) [300]")
+flags.DEFINE_integer("rnn_num_layers", 2, "Number of RNN (LSTM) layers [2]")
+flags.DEFINE_integer("rnn_hidden_size", 50, "Hidden size of RNN (LSTM) [50]")
 flags.DEFINE_float("learning_rate", 0.01, "Learning rate [0.01]")
 flags.DEFINE_float("max_grad_norm", 40, "Max gradient norm during trainig [40]")
 flags.DEFINE_integer("num_gpus", 1, "Number of GPUs [1]")
@@ -30,9 +30,9 @@ flags.DEFINE_integer("num_gpus", 1, "Number of GPUs [1]")
 flags.DEFINE_boolean("train", False, "Train? Test if False [False]")
 flags.DEFINE_boolean("load", False, "Load from last stop? [False]")
 flags.DEFINE_string("model", "multi", "Type of model? 'multi' or 'binary' [multi]")
-flags.DEFINE_integer("eval_period", 3, "Evaluation period [3]")
+flags.DEFINE_integer("eval_period", 5, "Evaluation period [3]")
 flags.DEFINE_integer("eval_num_batches", 10, "Number of batches to evaluate during training [10]")
-flags.DEFINE_integer("save_period", 1, "Save period [1]")
+flags.DEFINE_integer("save_period", 5, "Save period [1]")
 flags.DEFINE_string("save_dir", "save", "Save path [save]")
 flags.DEFINE_string("log_dir", "log", "Log path [log]")
 
@@ -42,7 +42,7 @@ flags.DEFINE_boolean("draft", False, "Quick iteration of epochs? [False]")
 FLAGS = flags.FLAGS
 
 def main(_):
-    vocab_dict = json.load(open(FLAGS.vocab_dict_path, 'rb'))
+    vocab_dict = json.load(open(FLAGS.vocab_dict_path, 'r'))
     FLAGS.vocab_size = len(vocab_dict)
     batch_size = FLAGS.batch_size
     if FLAGS.train:

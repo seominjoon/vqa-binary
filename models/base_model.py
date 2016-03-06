@@ -36,11 +36,11 @@ class BaseModel(object):
         max_sent_size = params.max_sent_size
 
         print("training %d epochs ..." % params.num_epochs)
-        for epoch_idx in xrange(params.num_epochs):
+        for epoch_idx in range(params.num_epochs):
             pbar = pb.ProgressBar(widgets=["epoch %d|" % (train_data_set.num_epochs_completed + 1),
                                            pb.Percentage(), pb.Bar(), pb.ETA()], maxval=num_batches)
             pbar.start()
-            for num_batches_completed in xrange(num_batches):
+            for num_batches_completed in range(int(num_batches)):
                 image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = train_data_set.get_next_labeled_batch(sent_size=max_sent_size)
                 _, summary_str, global_step = self.train_batch(sess, image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch, learning_rate)
                 writer.add_summary(summary_str, global_step)
@@ -64,7 +64,7 @@ class BaseModel(object):
         pbar = pb.ProgressBar(widgets=[string, pb.Percentage(), pb.Bar(), pb.ETA()], maxval=num_batches)
         pbar.start()
         losses = []
-        for num_batches_completed in xrange(num_batches):
+        for num_batches_completed in range(int(num_batches)):
             image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch = test_data_set.get_next_labeled_batch(sent_size=max_sent_size)
             cur_num_corrects, cur_loss, _, global_step = self.test_batch(sess, image_rep_batch, mc_sent_batch, mc_len_batch, mc_label_batch)
             num_corrects += cur_num_corrects

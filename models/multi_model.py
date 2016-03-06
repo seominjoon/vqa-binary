@@ -59,7 +59,8 @@ class MultiModel(BaseModel):
             m_batch = tf.tanh(tf.matmul(self.image_rep_batch, image_trans_mat) + image_trans_bias, name='m')  # [B, d]
             aug_m_batch = tf.expand_dims(m_batch, 2, name='aug_m')  # [B, d, 1]
             # s_batch = tf.tanh(tf.matmul(sent_rep_batch, sent_trans_mat) + sent_trans_bias, 'sent_trans')
-            logit_batch = tf.squeeze(tf.batch_matmul(mc_s_batch, aug_m_batch), [2], name='logit')  # [B, C]
+            # logit_batch = tf.squeeze(tf.batch_matmul(mc_s_batch, aug_m_batch), [2], name='logit')  # [B, C]
+            logit_batch = tf.reduce_sum(mc_s_batch, 2)
             p_batch = tf.nn.softmax(logit_batch, 'p')
 
         with tf.name_scope('loss') as loss_scope:
